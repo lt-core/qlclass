@@ -1,0 +1,1091 @@
+{
+ "settings": {
+  "schoolYear": "2025-2026",
+  "className": "11A2",
+  "grade": 11,
+  "weeks": 35,
+  "startDate": "2026-09-02",
+  "baseStudentWeek": 10,
+  "baseClassWeek": 400
+ },
+ "users": [
+  {
+   "id": 1,
+   "username": "admin",
+   "role": "admin",
+   "name": "Quản trị viên",
+   "studentId": null,
+   "salt": "8b62b01f4284e146acebc4913f44c2e5",
+   "passHash": "3b9767221170efc8a22c2ae7a665b8e295f7a8329a4f81cbeb78f577e58ab8bf8f7f8ab26147b54c93f59ad746b69265645d9f9dbe7401a897f7049f884ae075",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 3,
+   "username": "nguyenvandat",
+   "role": "student",
+   "name": "Nguyễn Văn Đạt",
+   "studentId": 1,
+   "salt": "bdc225b5b27efc7f1a3efe7d6cafb5da",
+   "passHash": "bf0c515d09adee7987914dedb7e31135fbf3cfacf2fac6e0882ac47ddcf91d9b4a4f83118cb0b44f27f652135bbf811717b596242099bacfc28a0f9c9c502b3a",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 4,
+   "username": "vohoanganh",
+   "role": "student",
+   "name": "Võ Hoàng Anh",
+   "studentId": 2,
+   "salt": "7b7d79c2c6fa210f1d169ae1eda74a26",
+   "passHash": "a763101f7253586530503c36fed65b477e4b9ef6218ac3cf454e46419eb397178f50e5d473ca7128349e02c0ee4734edd8e512b527a97c2a1eea96b0d0983d49",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 5,
+   "username": "kpakha",
+   "role": "student",
+   "name": "Kpă Kha",
+   "studentId": 3,
+   "salt": "8415621805dc095c9327e83ef6b02cd6",
+   "passHash": "a123c0cc0a3311801bb9fc95823fef9ab2625e253af41f36dca61f7cabf01add34f17143b26562e9a8826987202695f0d1db36e5334f21dbb29cd3959737d257",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 6,
+   "username": "nongvietvuong",
+   "role": "student",
+   "name": "Nông Việt Vương",
+   "studentId": 4,
+   "salt": "23ccc599e4a10c0e9d3dc1eeaa018281",
+   "passHash": "cfb00c89957cc7bc4a2593444c2acb801dfc5a4fb27148ab859c07f70cfcb82f923e56e6bb44da3f16b320876d4c0c8e55a1b987ce0a38ed76e4adfa0d0d4ef6",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 7,
+   "username": "lekhactin",
+   "role": "student",
+   "name": "Lê Khắc Tín",
+   "studentId": 5,
+   "salt": "25e18f6e2a2d82fc71598cedf8341a5b",
+   "passHash": "8b0b47b33241fec3f41d35e00e86bf1fad47c7882d92037801d31463c2b6080d068ef847f29cf5ca12868d6e2cf814a1dc045f393cad0032bbea51042cc3392f",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 8,
+   "username": "nguyentienthuong",
+   "role": "student",
+   "name": "Nguyễn Tiến Thường",
+   "studentId": 6,
+   "salt": "911fa2274e4feffa5bbb55073adb74a9",
+   "passHash": "1fb6f35a282734f3d50b2b82df2f1886846a198d0e1d4048e24ebe7a44b9acf0b921e813f876a35cc7aa2860e6ea4508b3281c56095a3f26f99b6370f8f09ddb",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 9,
+   "username": "dangtuongvy",
+   "role": "student",
+   "name": "Đặng Tường Vy",
+   "studentId": 7,
+   "salt": "75aa4a2b30ad179ff89d3a19ef32da3c",
+   "passHash": "532b2815a782a71555a3d8dc83d7de121273038fc5597f69bf86c544efd176ddbeb636ca2f73b4f610a235acd4f9e0d0d5eee9f0ff439bfe0cba99df472c8c8d",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 10,
+   "username": "ksorhlinh",
+   "role": "student",
+   "name": "Ksor H' Linh",
+   "studentId": 8,
+   "salt": "76f058ab7a360a27d1636d19e730cefb",
+   "passHash": "a6569fe08fe7a5d17467935221e25cae20740b26c95a73962f7fc812128810091bfe2f5ac6317875bbe6609ce6bfb2eb507af3ec9659692b9fdd6307c4eb9b7b",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 11,
+   "username": "hiaohryiong",
+   "role": "student",
+   "name": "Hiao H' Ryiong",
+   "studentId": 9,
+   "salt": "ce6d9f2d6a6e89a53fda15c90473892d",
+   "passHash": "a2640b470c2ed6e8297ebc4f0afa7b85437f0a2aac26b74c25115624761dc5ede9108897af6a9cab6dd493fc587b27e70dc3e7b9bc4fc67971b33915507ab55f",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 12,
+   "username": "tavanphat",
+   "role": "student",
+   "name": "Tạ Văn Phát",
+   "studentId": 10,
+   "salt": "3491ed799bc4327adc4860659b2578bf",
+   "passHash": "9df687ca47addc120e53b692caf83b4f2a28ab37645fddb8d12038880f917a45956e5d8757554f4bd522c1459151b128ac1fca099f01aa3d6cf5fbfa4820df08",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 13,
+   "username": "dinhdang",
+   "role": "student",
+   "name": "Đinh Đang",
+   "studentId": 11,
+   "salt": "0f1e6847d0fa7dec7bb7670b70aec183",
+   "passHash": "7bede36d5ed99880c6a096258e3440e4e6c37a6dacba1090143270fe146f0deb764f8a3f3b497a5866d51a541443e449b7546b25f1c09e9970fc1acffee85d28",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 14,
+   "username": "ksorhlan",
+   "role": "student",
+   "name": "Ksor H' Lan",
+   "studentId": 12,
+   "salt": "24b7be3b5b16ec70a80d418e872cdb56",
+   "passHash": "d17d7d458663abff52c9756f767c8927f6a0241765b982d40a2c4a1b11b521a948da1e64a1b33cb2e0186f635865bd46fb9032214a4d43923ac7d1be9774a246",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 15,
+   "username": "tranvanhiep",
+   "role": "student",
+   "name": "Trần Văn Hiệp",
+   "studentId": 13,
+   "salt": "f4022a63329cf69813b88367f7a97264",
+   "passHash": "9dfe2a17860ca75724b826d3434934a817d8b8252020d8669f2c909142a297e540b81ef7d5d1c049edfd86ecf54c2ee6ce6f751aecdbc5c31a4d8f4de2be8219",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 16,
+   "username": "hathikhanhquyen",
+   "role": "student",
+   "name": "Hà Thị Khánh Quyên",
+   "studentId": 14,
+   "salt": "1ddfdfa4d984ee60353719110516a886",
+   "passHash": "a3696a0a988eaa4073562bc3bc9a1d9ee374c6a87e6f6697273e224989f7e1dcb9a0cc158e5527e88d06347c6ae6c364f092ba5cbc8643558ec9bf46b3ef4060",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 17,
+   "username": "duongthingochang",
+   "role": "student",
+   "name": "Dương Thị Ngọc Hằng",
+   "studentId": 15,
+   "salt": "d6147465dea5533bfd73800c7fc086ba",
+   "passHash": "a8b9971a6873e986164d351224027c1fef0eb50ac743f60d8398cf2cf9cb59494a282e44906a79641e990e6289c4a0305a0f4bdaef66c65e21bca405763d28ef",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 18,
+   "username": "cuthianhthu",
+   "role": "student",
+   "name": "Cù Thị Anh Thư",
+   "studentId": 16,
+   "salt": "2461b149ea506be9e84f1ad87114e1fb",
+   "passHash": "c2ba1823e396c900f53ea56d4eb949ec4cd7404fea1381c0652f8300e684ef2bf96c85ad04bbe84416b0d85b658bd7a7140d824796ee6644be2f89b3f1fadad8",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 19,
+   "username": "dangtrinhhongduyen",
+   "role": "student",
+   "name": "Đặng Trịnh Hồng Duyên",
+   "studentId": 17,
+   "salt": "d556fd318b031d9cf12c81301547fe08",
+   "passHash": "817c15ebe77205cd256e27adf9fe98a895ecbe0134091dcd74aa79e6a26dc082402dd8691fd0aded0992543f766266c3014a6ef85e5eede4d3697dec4d9ac72f",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 20,
+   "username": "trinhphambaovy",
+   "role": "student",
+   "name": "Trịnh Phạm Bảo Vy",
+   "studentId": 18,
+   "salt": "444605f67e52e236400b33396f2eb624",
+   "passHash": "ef41b86154a74fe93069878fcd81ed09efcd2179bd20310d2a2bf1baeecfbf30c65c1674f2033fe74947845e4bdcc40964d8cf08e1531c7798170ab5201d1440",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 21,
+   "username": "ngophanluu",
+   "role": "student",
+   "name": "Ngô Phan Lưu",
+   "studentId": 19,
+   "salt": "0aff853c87574415bba983e7ab84ee45",
+   "passHash": "9e5770f57aa5e8f8a4e6c2594ce172cb783ce0733e342b1a5aa8081326e4739f7026247df0dc425f003c10fcd0da3e4361bea1ac1164aee93e248f324abd569a",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 22,
+   "username": "taletienthanh",
+   "role": "student",
+   "name": "Tạ Lê Tiến Thành",
+   "studentId": 20,
+   "salt": "27eeb285821a6b6653376bc8ab9dbeae",
+   "passHash": "8f923043202cca2e8c301fdba89556c38f1626e8953e616f51f1944e88031f3eeb4b3aa5026fecd7294f9a656eca837d87ca355994593babd2c1a068b6a4424a",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 23,
+   "username": "hatiendat",
+   "role": "student",
+   "name": "Hà Tiến Đạt",
+   "studentId": 21,
+   "salt": "6aa58ae4a2d37dcb203fc75b61c68bfc",
+   "passHash": "c2b6344d005176d0823024e9f92206de5aa3d70e2bbeece093259af66103815ec3d9506677e8c13371f7d97da82a3f5c04fc4637370579c75b643ecac79cb4ff",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 24,
+   "username": "nayhsinh",
+   "role": "student",
+   "name": "Nay H' Sinh",
+   "studentId": 22,
+   "salt": "1a576f019a962a29ee9e17e7711e09dc",
+   "passHash": "d83022d52f70438bd0dc6d7f5216034fcf3a9681c6ffa6fc5d7ccbb7ce1b848b6b9dba73b8600c7651d542e17093997ac4b0bed670f4a5f24c3179f37549a58a",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 25,
+   "username": "nayhlyna",
+   "role": "student",
+   "name": "Nay H' Lyna",
+   "studentId": 23,
+   "salt": "28ca2d23045d197138603c01a085bbe5",
+   "passHash": "5c0f6bcd8ffec6f509a8cb238215122f9d79be1ae87298935a3c8f2418eccee66b30a4b4e8b78939df3848c5988593ddda94588c597db2c331a8ba8d18a474c8",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 26,
+   "username": "luongtheduy",
+   "role": "student",
+   "name": "Lương Thế Duy",
+   "studentId": 24,
+   "salt": "fb19c4c3b6214ad6b458b03700b1ebe6",
+   "passHash": "d0c014543637de8ed5b5cb86e7ce17d9ae9d7e0c583e7deca37839031a4e5637e31ff496cf1d1f76a6bc1891174e3d5866416a72129fec37a4ed34b90c6098df",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 27,
+   "username": "tranthingoc",
+   "role": "student",
+   "name": "Trần Thị Ngọc",
+   "studentId": 25,
+   "salt": "b9ea5616cac1e33b7b55ac3ef223d050",
+   "passHash": "67e7d82c5087e5481e1e0fb26b1d27e6cdff4a703f7301d8ac71019bc18b9e5665a5fc00101029db0bfe4b7750902673961dae905010c7d295f49b1db6aa9e9e",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 28,
+   "username": "leminhtuan",
+   "role": "student",
+   "name": "Lê Minh Tuân",
+   "studentId": 26,
+   "salt": "d0b05a2dd0812644c7a1dfc4828c258a",
+   "passHash": "61addb88fcd8bad3bab1e23db7b1073bb581d4c0ce9e561084400e4af0bb0b1070b78f45fd48e5827f299c63681e4e6dc8897cfc3f5b6b03be0056c6fa3d6c4c",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 29,
+   "username": "hoangthikhanhlinh",
+   "role": "student",
+   "name": "Hoàng Thị Khánh Linh",
+   "studentId": 27,
+   "salt": "037a0aef25ec56d12b54fa26678c5a59",
+   "passHash": "76eaa90f89e660289ca03465e8ce46170a1d7b835a42ab15f493f9e7b77ac2f03a69c126cb24a33c0af1528bf536c94452784f23713e94f52a2ac77921ff5492",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 30,
+   "username": "nongthihoaithuong",
+   "role": "student",
+   "name": "Nông Thị Hoài Thương",
+   "studentId": 28,
+   "salt": "8d0ce68ec9e745dbf6f5bedb8b7d0e66",
+   "passHash": "bc66e8868f5084360690164492e77d432d9e15bac74ff480e2f577f728f8273ab87f1e883e576854ad89d0e4bb6aa975cf335937e78bc8ed776ecac372c4f3ac",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 31,
+   "username": "nongthilinhnham",
+   "role": "student",
+   "name": "Nông Thị Linh Nhâm",
+   "studentId": 29,
+   "salt": "a70cab2f8d6fba0c3116b4daa1d154a6",
+   "passHash": "9756d15305e7d2aaffb830532eaa1696fdc85ae0a67f21a056b620ac349ba5a122b086cf52e90bdcd2227bcee43145ebeba711ec2b18def2c2ed6e5fc7eef9fb",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 32,
+   "username": "lethinguyen",
+   "role": "student",
+   "name": "Lê Thị Nguyên",
+   "studentId": 30,
+   "salt": "69ff9123e980a971eefec8c2cc566e77",
+   "passHash": "631386a32e435d39cb3a9dd11b46129e8b480d8a2d9dedb5864ceb11e865c69050accab18a09ac67662ab267ad9fe1c33f60477b73db9be6a444cd262ac663be",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 33,
+   "username": "nguyenthihan",
+   "role": "student",
+   "name": "Nguyễn Thị Hân",
+   "studentId": 31,
+   "salt": "2166ac57c38d32831f07601738f5218b",
+   "passHash": "62bfba4d9a3e3539193630513708afc08b921a0b2f50720125dcc847dc31333c731ee3d1bfd28f42afbb241b2d4eec02872228d295f08a85b7bcafbfc1213188",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 34,
+   "username": "ralantrung",
+   "role": "student",
+   "name": "Ralan Trung",
+   "studentId": 32,
+   "salt": "9ebfb3affac56ed17e0f3ccc32e76dde",
+   "passHash": "078b5807059f1e90ec6052df2e9519979a9249e8074fd3bb39290fe598a6cfe94f08f2edb00cd5acd8f868c39e217d9330607cffdbb0f706e17ffe4e622397e2",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 35,
+   "username": "buithithuytrang",
+   "role": "student",
+   "name": "Bùi Thị Thuỳ Trang",
+   "studentId": 33,
+   "salt": "7227d067149a7f206663f57fe94817fc",
+   "passHash": "625e074762c03164604266049687fdeacbf20105a30275a7f92621043c9bef47fafb03a1e7189dcdfe1b8af20874058554ff8d59b0aa753e63d627a88746b301",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 36,
+   "username": "dongoctuananh",
+   "role": "student",
+   "name": "Đỗ Ngọc Tuấn Anh",
+   "studentId": 34,
+   "salt": "74c18483b91bde7602b5b1ad6f1f2afb",
+   "passHash": "c45bc1381eb4e0ecf55dd0f8c33e3766bcc3d0caf820e222c5ce7851caae3626e1f54ab1d1ef0958a0f879a8c3f5812ca4c850d2ac50533fae74d154e8a24b1e",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 37,
+   "username": "nguyenthikimphung",
+   "role": "student",
+   "name": "Nguyễn Thị Kim Phụng",
+   "studentId": 35,
+   "salt": "d0c09d09ac9c691d21adba81afeef301",
+   "passHash": "57c174a6fd158298e2571b32c058c46ccc9e1e200c5ffc67950f98f48d80a410df15042af92b54d9e99e1497698aa06ed4279bf0b7b63786ae695705b7ad853f",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 38,
+   "username": "hoangthidiemquynh",
+   "role": "student",
+   "name": "Hoàng Thị Diễm Quỳnh",
+   "studentId": 36,
+   "salt": "8a47e1a02a1131eeea921b214ef2e65c",
+   "passHash": "073e42cbb8447006b94327cc1231e8f694d758f98530a7218f44b2917d7822396458c5e92bb5c4dac11bbb2560b1a384bf72f068f315e92c3458c9aad2d559a7",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 39,
+   "username": "trandonganh",
+   "role": "student",
+   "name": "Trần Đông Anh",
+   "studentId": 37,
+   "salt": "ee434ddc4affa164bd5c36d5888a50ac",
+   "passHash": "b07407b05d35597703e03a656cb33636e4eb05bca9fe22b85058d536bfed8b7f2287e13c0cbfd1f8196f2a037ac4dddfda3f544e79730fd2beb7ac1bb11f580d",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 40,
+   "username": "nguyenletramy",
+   "role": "student",
+   "name": "Nguyễn Lê Trà My",
+   "studentId": 38,
+   "salt": "40b9b0232501f0b5700bdba8a6139519",
+   "passHash": "a4de4b4bb85722c25c98e80699ab551783d3eea9c3b36d0fded32e0696ad43cc1e72d3209d7a3d29cfa9dd4ddff4057d8104d404498157b7d4762975e329b4ae",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 41,
+   "username": "nguyendangtrungtai",
+   "role": "student",
+   "name": "Nguyễn Đăng Trung Tài",
+   "studentId": 39,
+   "salt": "b0dc701aad2c9b3ad93e4d10605e762c",
+   "passHash": "da038fc57d34435b48c6ada585cd37cfee63e45594220e5786ad45958ce6fdb785ae8ad6707839c35ec365f40dec25e84568580f7f3adec5960bfe6f5b732797",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 42,
+   "username": "loptruong",
+   "role": "student",
+   "name": "Lê Khắc Tín",
+   "studentId": 5,
+   "salt": "d7329aea9e3955e7c2b84af9caa637af",
+   "passHash": "846d809c12dc633fe4927c67193236d4dcbbff21c7c259c3531cd9a6b72d486481ac36396b5b99782fd403dce8be109d58c52b83fb0b840dab813f20f2ff1cbd",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 43,
+   "username": "totruong1",
+   "role": "student",
+   "name": "Đặng Tường Vy",
+   "studentId": 7,
+   "salt": "e2c76d46fda7ce4e9a725621ffe4e62c",
+   "passHash": "381a1234f6146a22ada0f4e7df4a8ce81140317720dd1b4821352d0e9fc25cf05ee1876ddcd0b338cabc7d051f5c1ae9a633a4577d6865c845915be62ed07103",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 44,
+   "username": "totruong2",
+   "role": "student",
+   "name": "Cù Thị Anh Thư",
+   "studentId": 16,
+   "salt": "1f8e924a4c3e0e265b033baea8378763",
+   "passHash": "0a129e9a7b9c7de1fc09de518c86ee364c7bb0eb96024ef10b80dcc50c37a50ba823ee03cca8279ea87b11628f805ab46a2dc3cf8345411d2cdc1f3e1243796b",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 45,
+   "username": "totruong3",
+   "role": "student",
+   "name": "Hoàng Thị Khánh Linh",
+   "studentId": 27,
+   "salt": "b2e7b06e582c0557c1c0818f186eff8d",
+   "passHash": "504ecad85288bfd7f70ac4ecfd0c3c0b0e930f491f7a2123ab7c8910d5b96b17042fe1a0c9db5ec214003fcfeede88c14bb26de0c9390764497e82d43c1bebf9",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 46,
+   "username": "thuquy",
+   "role": "student",
+   "name": "Hà Thị Khánh Quyên",
+   "studentId": 14,
+   "salt": "bf7b8cbe47a7c6e33809ce9f94fc8370",
+   "passHash": "dad99a2023b0c123c90dd21af1027353d0693a73bce1fdca0f8495b740172ae9cfaac57759d03793e9cc65bc6b5b20e1f5303758d4ad785345a1d7ae05730cfe",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 47,
+   "username": "bithu",
+   "role": "student",
+   "name": "Bùi Thị Thuỳ Trang",
+   "studentId": 33,
+   "salt": "147aea98213124557a841b87a6faba72",
+   "passHash": "3111afcb6b352a13f02a8643d1f8adfac81cfd1ddc2a544e133ad5573dbe84ea9abfbc5ee0e1053bc3c240b305b97826803c7dc677b1976c6a316daa33b6119e",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 48,
+   "username": "phobithu",
+   "role": "student",
+   "name": "Trịnh Phạm Bảo Vy",
+   "studentId": 18,
+   "salt": "34f0b446962fd049f79a60ef3468e4e4",
+   "passHash": "1bcd225bbc62afa9806d7b77a0abe33197411ef0dd8713264139430b88466865b88d069a0d2aff5787e371c66ff14d1649115be7a995f50abc8a4a196a4f66ef",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 49,
+   "username": "phovanthe",
+   "role": "student",
+   "name": "Đặng Trịnh Hồng Duyên",
+   "studentId": 17,
+   "salt": "d73f9b0149a05c3bdc2567bb629fc145",
+   "passHash": "f66600f2ff04c5d5fbd0a151e513687bd4a979b73638bf68a1704eedd5c0f211e0b6a02e5c6d1001e221e78cd10ea4f30f2b7d0a68c00366764c2690c7ce85e3",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 50,
+   "username": "phohoctap",
+   "role": "student",
+   "name": "Đỗ Ngọc Tuấn Anh",
+   "studentId": 34,
+   "salt": "0e076784221b84f410525a9a7cd9bee4",
+   "passHash": "39dae9f024d37d765d84dd3b865ac8979b723eb70cb1b0c10ecf1056cbf3c4f510aa7cd1df50bad39b2c50fe5f3a7ca3326e758144a3d1a1946d3e0d8a340ee2",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 51,
+   "username": "pholaodong",
+   "role": "student",
+   "name": "Trần Đông Anh",
+   "studentId": 37,
+   "salt": "abac7115a270de0f9670d0023508f525",
+   "passHash": "37980dcc5ce679f3802040c258ecaf7df55b1724c61651c53627312be0f53a4989e7826dabc0f64a9f92d424e6c00ccf80dff058320f34abe082798e5fd6ce2f",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 52,
+   "username": "uyvien",
+   "role": "student",
+   "name": "Nông Thị Linh Nhâm",
+   "studentId": 29,
+   "salt": "d3ca28ee0f6c5061c1e35d04b1c7a219",
+   "passHash": "08907409684cf66674b985c42b992990798c20f70e2b757bfa3170eea02f0e1a3b4f3eb82f42026da59b1296bb91ae997158f1c163f0e1f84bf92b9ddc659655",
+   "createdAt": "2026-08-25T00:59:52.763Z"
+  },
+  {
+   "id": 53,
+   "username": "lequangxe",
+   "role": "teacher",
+   "name": "Lê Quang Xe",
+   "studentId": null,
+   "salt": "1c0034dfad72e2c727bcc7e4b99b075a",
+   "passHash": "21803912321fb9fe06da91e47c5bcec1afed4ab13781be38428a31ae0104ceceafdaaef98b9bbf1bd11265098659a95c40ccef18e9b90d374f55536f3b07f544",
+   "createdAt": "2026-08-25T01:02:30.492Z"
+  }
+ ],
+ "tokens": {
+  "3494f66155314f91915f18f26e98145ed58c6be2612e2949ca5246271640a91e": 42,
+  "ec45d283841126c310c02564267d8e8495dacc76e61d320abb243b21e80cc92b": 3,
+  "cfb6f6af533fdf6ac7981aa12dff61a1dd8a8f77caf7c39c48a24836f704f492": 1,
+  "fbf43079f130ccb3c08e7a3feafb313db0a9631adf4261ecc8b2921d59dd034c": 42,
+  "3b672e6936602f90a7db1de054e98764c2df5ddd346768d4c8d67c835f81fcd7": 42,
+  "1699f3843a28beebdb692b4fd972439a623d0c8cc0535531de6ebe1e8dba1a0f": 42,
+  "4baf7be86cfe07bd100a125ec2fe2ffda606bae5b3850e441fe88c0b1e3dd9a6": 42,
+  "2f60666ac98dcb7c0686f947e969b518b4ba41afa6abdff62edcb13297e62ccd": 1,
+  "7d2b1700dea67a669eabe8f8da86830c587fcd61120d78651dbbeecb8c7b277e": 43,
+  "2e81bfae1c5800a597beb353fc5fe2b1c9d15290e0c700fca5dc2efecc8bfa5d": 1,
+  "f53ec94ea2a2f4709cff42d041a9b8a4fea4d220fa5d614003be97bb7709ce7a": 43,
+  "6f414b597dcbd1056da50adfa619e948ab2e02c9c09490ddcc8a182906c74710": 43,
+  "872fb3b7e9e735ee3db772af988aaf585be2dbf80300721ce35f53db3259b42b": 53
+ },
+ "types": [
+  {
+   "id": 1,
+   "kind": "achievement",
+   "name": "Giỏi thi đấu văn nghệ",
+   "points": 5
+  },
+  {
+   "id": 2,
+   "kind": "achievement",
+   "name": "Trực tuần tốt",
+   "points": 2
+  },
+  {
+   "id": 3,
+   "kind": "achievement",
+   "name": "Đóng góp sách vở",
+   "points": 1
+  },
+  {
+   "id": 4,
+   "kind": "violation",
+   "name": "Đi muộn",
+   "points": 2
+  },
+  {
+   "id": 5,
+   "kind": "violation",
+   "name": "Không làm bài tập",
+   "points": 3
+  },
+  {
+   "id": 6,
+   "kind": "violation",
+   "name": "Nói chuyện trong giờ",
+   "points": 1
+  }
+ ],
+ "groups": [
+  {
+   "id": 1,
+   "name": "Tổ 1",
+   "rows": 6,
+   "cols": 2
+  },
+  {
+   "id": 2,
+   "name": "Tổ 2",
+   "rows": 6,
+   "cols": 2
+  },
+  {
+   "id": 3,
+   "name": "Tổ 3",
+   "rows": 6,
+   "cols": 2
+  },
+  {
+   "id": 4,
+   "name": "Tổ 4",
+   "rows": 5,
+   "cols": 2
+  }
+ ],
+ "students": [
+  {
+   "id": 1,
+   "name": "Nguyễn Văn Đạt",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/a771eddbd254d2b2.jpg",
+   "groupId": 1,
+   "row": 0,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 2,
+   "name": "Võ Hoàng Anh",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/3bd749931f821356.jpg",
+   "groupId": 1,
+   "row": 1,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 3,
+   "name": "Kpă Kha",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/b8c405f78617ce20.jpg",
+   "groupId": 1,
+   "row": 1,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 4,
+   "name": "Nông Việt Vương",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/f191d10a7e48b228.jpg",
+   "groupId": 1,
+   "row": 2,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 5,
+   "name": "Lê Khắc Tín",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/751ecdc6881a3a97.jpg",
+   "groupId": 1,
+   "row": 2,
+   "col": 1,
+   "position": "lop_truong"
+  },
+  {
+   "id": 6,
+   "name": "Nguyễn Tiến Thường",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/37240f5cc4de3c48.png",
+   "groupId": 1,
+   "row": 3,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 7,
+   "name": "Đặng Tường Vy",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/d878cc63b1737237.jpg",
+   "groupId": 1,
+   "row": 3,
+   "col": 1,
+   "position": "to_truong"
+  },
+  {
+   "id": 8,
+   "name": "Ksor H' Linh",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/5aeec6e6fe41c3c1.jpg",
+   "groupId": 1,
+   "row": 4,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 9,
+   "name": "Hiao H' Ryiong",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/7f8f2cd36b6479d9.jpg",
+   "groupId": 1,
+   "row": 4,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 10,
+   "name": "Tạ Văn Phát",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/7ccc8429adac9935.jpg",
+   "groupId": 1,
+   "row": 5,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 11,
+   "name": "Đinh Đang",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/70895a86af86fb3d.jpg",
+   "groupId": 2,
+   "row": 0,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 12,
+   "name": "Ksor H' Lan",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/4a84d4d41c188bd5.jpg",
+   "groupId": 2,
+   "row": 0,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 13,
+   "name": "Trần Văn Hiệp",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/cbb1c03343002f75.jpg",
+   "groupId": 2,
+   "row": 1,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 14,
+   "name": "Hà Thị Khánh Quyên",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/08bf5771927219b6.jpg",
+   "groupId": 2,
+   "row": 1,
+   "col": 1,
+   "position": "thu_quy"
+  },
+  {
+   "id": 15,
+   "name": "Dương Thị Ngọc Hằng",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/35419fbd5bf47edb.jpg",
+   "groupId": 2,
+   "row": 2,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 16,
+   "name": "Cù Thị Anh Thư",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/c87d5ceaad9db40e.jpg",
+   "groupId": 2,
+   "row": 2,
+   "col": 1,
+   "position": "to_truong"
+  },
+  {
+   "id": 17,
+   "name": "Đặng Trịnh Hồng Duyên",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/c99e3d7280859d03.jpg",
+   "groupId": 2,
+   "row": 3,
+   "col": 0,
+   "position": "pho_van_the"
+  },
+  {
+   "id": 18,
+   "name": "Trịnh Phạm Bảo Vy",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/f2c304058c6335d7.png",
+   "groupId": 2,
+   "row": 3,
+   "col": 1,
+   "position": "pho_bi_thu"
+  },
+  {
+   "id": 19,
+   "name": "Ngô Phan Lưu",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/9f6f56e6cbc8994a.jpg",
+   "groupId": 2,
+   "row": 4,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 20,
+   "name": "Tạ Lê Tiến Thành",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/50fcdca76af497f0.jpg",
+   "groupId": 2,
+   "row": 4,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 21,
+   "name": "Hà Tiến Đạt",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/64841fcbd43f65d9.png",
+   "groupId": 2,
+   "row": 5,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 22,
+   "name": "Nay H' Sinh",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/3c9c7db2b81224d9.jpg",
+   "groupId": 3,
+   "row": 0,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 23,
+   "name": "Nay H' Lyna",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/4c76bbdf13a84ea2.png",
+   "groupId": 3,
+   "row": 0,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 24,
+   "name": "Lương Thế Duy",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/97a79661a9e968af.jpg",
+   "groupId": 3,
+   "row": 1,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 25,
+   "name": "Trần Thị Ngọc",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/980318f165a2b230.jpg",
+   "groupId": 3,
+   "row": 1,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 26,
+   "name": "Lê Minh Tuân",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/bd500f24801db03b.jpg",
+   "groupId": 3,
+   "row": 2,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 27,
+   "name": "Hoàng Thị Khánh Linh",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/b1f2a6b3cb9073a1.jpg",
+   "groupId": 3,
+   "row": 2,
+   "col": 1,
+   "position": "to_truong"
+  },
+  {
+   "id": 28,
+   "name": "Nông Thị Hoài Thương",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/af6ed38336b5e12e.jpg",
+   "groupId": 3,
+   "row": 3,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 29,
+   "name": "Nông Thị Linh Nhâm",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/d0dee5511709f1f7.jpg",
+   "groupId": 3,
+   "row": 3,
+   "col": 1,
+   "position": "uy_vien"
+  },
+  {
+   "id": 30,
+   "name": "Lê Thị Nguyên",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/cc8369fd99c22000.jpg",
+   "groupId": 3,
+   "row": 4,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 31,
+   "name": "Nguyễn Thị Hân",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/85e8ccb1c5d6df09.jpg",
+   "groupId": 3,
+   "row": 4,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 32,
+   "name": "Ralan Trung",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/a42264e6ff44985a.jpg",
+   "groupId": 4,
+   "row": 0,
+   "col": 0,
+   "position": "to_truong"
+  },
+  {
+   "id": 33,
+   "name": "Bùi Thị Thuỳ Trang",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/48cf9d0809e98cc4.jpg",
+   "groupId": 4,
+   "row": 1,
+   "col": 0,
+   "position": "bi_thu"
+  },
+  {
+   "id": 34,
+   "name": "Đỗ Ngọc Tuấn Anh",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/3997607f77009f93.jpg",
+   "groupId": 4,
+   "row": 1,
+   "col": 1,
+   "position": "pho_hoc_tap"
+  },
+  {
+   "id": 35,
+   "name": "Nguyễn Thị Kim Phụng",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/66f231b13429dff5.jpg",
+   "groupId": 4,
+   "row": 2,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 36,
+   "name": "Hoàng Thị Diễm Quỳnh",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/9f63af3f3facab37.jpg",
+   "groupId": 4,
+   "row": 2,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 37,
+   "name": "Trần Đông Anh",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/fc0a0a9f828be9e7.jpg",
+   "groupId": 4,
+   "row": 3,
+   "col": 0,
+   "position": "pho_lao_dong"
+  },
+  {
+   "id": 38,
+   "name": "Nguyễn Lê Trà My",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/ddac671bf4d95edf.jpg",
+   "groupId": 4,
+   "row": 3,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 39,
+   "name": "Nguyễn Đăng Trung Tài",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "/uploads/23cd090140e5858c.jpg",
+   "groupId": 4,
+   "row": 4,
+   "col": 0,
+   "position": "thanh_vien"
+  }
+ ],
+ "reviews": [],
+ "labor": [],
+ "culture": [],
+ "transactions": [],
+ "records": [],
+ "announcements": [],
+ "counters": {
+  "users": 53
+ }
+}
