@@ -18,19 +18,21 @@ function parseCookies(req) {
   return out;
 }
 
-function currentUser(req) {
+async function currentUser(req) {
   const token = parseCookies(req)[COOKIE];
   if (!token) return null;
   const db = getDb();
-  const uid = db.tokens[token];
-  return uid ? (db.users.find(u => u.id === uid) || null) : null;
+  const uid = await store.findUidByToken(token);
+  return uid ? (db.users.find(u => u.id === Number(uid)) || null) : null;
 }
 
-function requireAuth(req, res, next) {
-  const u = currentUser(req);
-  if (!u) return res.status(401).json({ error: 'Chưa đăng nhập' });
-  req.user = u;
-  next();
+async function requireAuth(req, res, next) {
+  try {
+    const u = await currentUser(req);
+    if (!u) return res.status(401).json({ error: 'Chưa đăng nhập' });
+    req.user = u;
+    next();
+  } catch (e) { next(e); }
 }
 
 function requireAdmin(req, res, next) {
@@ -105,7 +107,7 @@ function setAuthCookie(req, res, token, maxAge) {
   res.setHeader('Set-Cookie', `${COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`);
 }
 
-router.post('/auth/login', (req, res) => {
+router.post('/auth/login', async (req, res) => {
   const { username, password } = req.body || {};
   const db = getDb();
   const u = db.users.find(x => x.username === String(username || '').trim());
@@ -113,8 +115,7 @@ router.post('/auth/login', (req, res) => {
     return res.status(400).json({ error: 'Sai tài khoản hoặc mật khẩu' });
   }
   const token = dbu.newToken();
-  db.tokens[token] = u.id;
-  store.scheduleSave();
+  await store.setToken(token, u.id);
   setAuthCookie(req, res, token, 604800);
   res.json({ ok: true });
 });
@@ -134,9 +135,9 @@ router.post('/auth/change-password', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-router.post('/auth/logout', (req, res) => {
+router.post('/auth/logout', async (req, res) => {
   const token = parseCookies(req)[COOKIE];
-  if (token) { delete getDb().tokens[token]; store.scheduleSave(); }
+  if (token) { await store.delToken(token); }
   setAuthCookie(req, res, '', 0);
   res.json({ ok: true });
 });
@@ -252,12 +253,12 @@ router.put('/users/:id', requireAuth, requireAdmin, (req, res) => {
   res.json(publicUser(u));
 });
 
-router.delete('/users/:id', requireAuth, requireAdmin, (req, res) => {
+router.delete('/users/:id', requireAuth, requireAdmin, async (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   const u = db.users.find(x => x.id === id);
   if (!u || u.role !== 'teacher') return res.status(404).json({ error: 'Không tìm thấy giáo viên' });
-  Object.keys(db.tokens).forEach(tk => { if (db.tokens[tk] === id) delete db.tokens[tk]; });
+  await store.delTokensOfUser(id);
   db.users = db.users.filter(x => x.id !== id);
   store.scheduleSave();
   res.json({ ok: true });

@@ -78,18 +78,38 @@ async function initDbBackend(defaults) {
     name TEXT PRIMARY KEY, mime TEXT NOT NULL, size INTEGER NOT NULL,
     data BLOB NOT NULL, created_at TEXT DEFAULT (datetime('now'))
   )`);
+  await c.execute(`CREATE TABLE IF NOT EXISTS tokens (
+    token TEXT PRIMARY KEY, uid INTEGER NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`);
   const rs = await c.execute({ sql: 'SELECT v FROM kv WHERE k = ?', args: [DOC_KEY] });
   if (rs.rows.length && rs.rows[0].v) {
     try {
       state = JSON.parse(String(rs.rows[0].v));
-      return;
     } catch (e) {
       console.error('Loi doc doc tu DB, tao du lieu moi:', e.message);
+      state = defaults();
+      await flushDoc();
+      console.log('[store] Da khoi tao du lieu mac dinh trong DB');
     }
+  } else {
+    state = defaults();
+    await flushDoc();
+    console.log('[store] Da khoi tao du lieu mac dinh trong DB');
   }
-  state = defaults();
-  await flushDoc();
-  console.log('[store] Da khoi tao du lieu mac dinh trong DB');
+  // chuyen cac token con sot trong document sang bang rieng (lan dau tien)
+  const legacy = Object.entries((state && state.tokens) || {});
+  if (legacy.length) {
+    const cnt = await c.execute('SELECT count(*) AS n FROM tokens');
+    if (Number(cnt.rows[0].n) === 0) {
+      for (const [tok, uid] of legacy) {
+        await c.execute({ sql: 'INSERT OR REPLACE INTO tokens (token, uid) VALUES (?, ?)', args: [tok, Number(uid)] });
+      }
+      console.log(`[store] Da chuyen ${legacy.length} token cu sang bang rieng`);
+    }
+    state.tokens = {};
+    await flushDoc();
+  }
 }
 
 async function flushDoc() {
@@ -164,6 +184,51 @@ async function getFile(name) {
   return { mime: mimes[ext] || 'application/octet-stream', buf };
 }
 
+/* ---------- Token dang nhap: bang rieng, an toan voi serverless ---------- */
+
+async function setToken(token, uid) {
+  if (!USE_DB) {
+    state.tokens = state.tokens || {};
+    state.tokens[token] = uid;
+    dirty = true;
+    return;
+  }
+  const c = await client();
+  await c.execute({ sql: 'INSERT OR REPLACE INTO tokens (token, uid) VALUES (?, ?)', args: [token, Number(uid)] });
+}
+
+async function delToken(token) {
+  if (!USE_DB) {
+    if (state.tokens) delete state.tokens[token];
+    dirty = true;
+    return;
+  }
+  const c = await client();
+  await c.execute({ sql: 'DELETE FROM tokens WHERE token = ?', args: [token] });
+}
+
+async function findUidByToken(token) {
+  if (!token) return null;
+  if (!USE_DB) {
+    const v = (state.tokens || {})[token];
+    return v == null ? null : Number(v);
+  }
+  const c = await client();
+  const rs = await c.execute({ sql: 'SELECT uid FROM tokens WHERE token = ?', args: [token] });
+  return rs.rows.length ? Number(rs.rows[0].uid) : null;
+}
+
+async function delTokensOfUser(uid) {
+  if (!USE_DB) {
+    const t = state.tokens || {};
+    Object.keys(t).forEach(k => { if (Number(t[k]) === Number(uid)) delete t[k]; });
+    dirty = true;
+    return;
+  }
+  const c = await client();
+  await c.execute({ sql: 'DELETE FROM tokens WHERE uid = ?', args: [Number(uid)] });
+}
+
 if (!USE_DB) {
   process.on('exit', () => { try { if (dirty && state) writeFileBackend(); } catch (_) {} });
 }
@@ -171,6 +236,6 @@ process.on('SIGINT', () => process.exit(0));
 
 module.exports = {
   ensureReady, get, scheduleSave, persistNow, persistIfDirty, isDirty,
-  nextId, putFile, getFile,
+  nextId, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
   get useDb() { return USE_DB; }
 };
