@@ -1,13 +1,18 @@
 {
   "name": "qlclass",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "App quan li lop hoc",
   "main": "server/index.js",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node --watch server/index.js",
+    "push-db": "node scripts/push-to-turso.mjs"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "express": "^4.22.2"
   }
 }

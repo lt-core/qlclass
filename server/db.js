@@ -181,8 +181,7 @@ function defaults() {
 }
 
 function init() {
-  store.init(defaults);
-  store.persistNow();
+  return store.ensureReady(defaults);
 }
 
 module.exports = { init, hashPassword, verifyPassword, newToken };

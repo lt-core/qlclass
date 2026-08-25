@@ -96,6 +96,15 @@ function buildPermissions(req) {
   };
 }
 
+function isHttps(req) {
+  return req.secure || req.headers['x-forwarded-proto'] === 'https';
+}
+
+function setAuthCookie(req, res, token, maxAge) {
+  const secure = isHttps(req) ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `${COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${maxAge}${secure}`);
+}
+
 router.post('/auth/login', (req, res) => {
   const { username, password } = req.body || {};
   const db = getDb();
@@ -106,7 +115,7 @@ router.post('/auth/login', (req, res) => {
   const token = dbu.newToken();
   db.tokens[token] = u.id;
   store.scheduleSave();
-  res.setHeader('Set-Cookie', `${COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800`);
+  setAuthCookie(req, res, token, 604800);
   res.json({ ok: true });
 });
 
@@ -128,7 +137,7 @@ router.post('/auth/change-password', requireAuth, (req, res) => {
 router.post('/auth/logout', (req, res) => {
   const token = parseCookies(req)[COOKIE];
   if (token) { delete getDb().tokens[token]; store.scheduleSave(); }
-  res.setHeader('Set-Cookie', `${COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`);
+  setAuthCookie(req, res, '', 0);
   res.json({ ok: true });
 });
 
@@ -749,19 +758,20 @@ router.get('/summary', requireAuth, (req, res) => {
   });
 });
 
-router.post('/upload', requireAuth, (req, res) => {
+router.post('/upload', requireAuth, async (req, res) => {
   const { dataUrl } = req.body || {};
   if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/')) return res.status(400).json({ error: 'Ảnh không hợp lệ' });
-  if (dataUrl.length > 4 * 1024 * 1024) return res.status(400).json({ error: 'Ảnh quá lớn (tối đa ~3MB)' });
+  if (dataUrl.length > 3 * 1024 * 1024) return res.status(400).json({ error: 'Ảnh quá lớn (tối đa ~2MB)' });
   const m = /^data:image\/(png|jpe?g|gif|webp);base64,(.+)$/.exec(dataUrl);
   if (!m) return res.status(400).json({ error: 'Định dạng ảnh không hỗ trợ' });
   const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
   const name = crypto.randomBytes(8).toString('hex') + '.' + ext;
-  const fs = require('fs');
-  const path = require('path');
-  const dir = path.join(__dirname, '..', 'public', 'uploads');
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(path.join(dir, name), Buffer.from(m[2], 'base64'));
+  try {
+    await store.putFile(name, 'image/' + m[1], Buffer.from(m[2], 'base64'));
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Lỗi lưu ảnh' });
+  }
   res.json({ url: '/uploads/' + name });
 });
 

@@ -7,7 +7,7 @@ export function renderHome() {
       </header>
 
       <section class="home-hero">
-        <h1>Quản lý lớp học<br><span>dễ như chưa từng có</span></h1>
+        <h1>Quản lý lớp học<br><span>mỗi người một vai trò</span></h1>
         <p>
           Hệ thống quản lý lớp dành cho giáo viên chủ nhiệm và ban cán sự lớp:
           theo dõi thành tích — vi phạm theo tuần, sơ đồ chỗ ngồi kéo-thả,
