@@ -32,9 +32,11 @@ async function render(view) {
     </div>`;
   ['class', 'study'].forEach(type => {
     const btn = view.querySelector(`[data-rv-edit="${type}"]`);
+    const editBox = view.querySelector(`#rv-edit-${type}`);
     if (btn) btn.onclick = () => {
       view.querySelector(`#rv-show-${type}`).style.display = 'none';
-      view.querySelector(`#rv-edit-${type}`).style.display = 'block';
+      btn.style.display = 'none';
+      editBox.style.display = 'block';
       const editorContainer = view.querySelector(`#rv-editor-${type}`);
       const editor = createEditor(editorContainer, {
         placeholder: `Nhận xét chung tình hình ${type === 'class' ? 'lớp' : 'học tập'} trong tuần...`,
