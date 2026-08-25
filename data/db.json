@@ -605,7 +605,7 @@
   {
    "id": 4,
    "name": "Tổ 4",
-   "rows": 5,
+   "rows": 6,
    "cols": 2
   }
  ],
@@ -1074,6 +1074,30 @@
    "address": "",
    "photo": "/uploads/23cd090140e5858c.jpg",
    "groupId": 4,
+   "row": 5,
+   "col": 0,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 40,
+   "name": "Hoàng Thị Hồng Thắm",
+   "dob": "",
+   "gender": "Nữ",
+   "address": "",
+   "photo": "/uploads/9ca22de1dc021fb1.jpg",
+   "groupId": 4,
+   "row": 4,
+   "col": 1,
+   "position": "thanh_vien"
+  },
+  {
+   "id": 41,
+   "name": "Nông Đức Sáng",
+   "dob": "",
+   "gender": "Nam",
+   "address": "",
+   "photo": "",
+   "groupId": 4,
    "row": 4,
    "col": 0,
    "position": "thanh_vien"
@@ -1086,6 +1110,7 @@
  "records": [],
  "announcements": [],
  "counters": {
-  "users": 53
+  "users": 53,
+  "students": 41
  }
 }
