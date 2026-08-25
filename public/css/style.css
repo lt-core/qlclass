@@ -461,6 +461,25 @@ table.tbl tbody tr:hover td { background: #f7fbfe; }
 }
 .stu-chip.selected { outline: 2.5px solid var(--amber); outline-offset: 1px; }
 .stu-chip.dragging { opacity: .4; }
+.stu-chip { touch-action: none; }
+.touch-ghost {
+  width: 100px;
+  padding: 6px 10px;
+  background: var(--card);
+  border: 2px solid var(--primary);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.touch-ghost img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
 .pool { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; min-height: 54px; }
 .pool .stu-chip { width: 112px; }
 
@@ -1052,6 +1071,10 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 .sb-lbl-base { color: var(--primary); }
 .sb-lbl-ach { color: var(--green); }
 .sb-lbl-vio { color: var(--red); }
+
+/* ---------- Touch drag & drop ---------- */
+.seat-grid { -webkit-user-select: none; user-select: none; }
+.pool { -webkit-user-select: none; user-select: none; }
 
 /* ---------- Input Suffix ---------- */
 .input-suffix {

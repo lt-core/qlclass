@@ -100,6 +100,10 @@ async function render(view) {
   view.querySelectorAll('[data-st-acc]').forEach(b => b.onclick = () => accModal(students.find(s => s.id === Number(b.dataset.stAcc))));
 
   let dragSid = null;
+  let touchGhost = null;
+  let touchStartPos = null;
+  let touchDragging = false;
+
   view.querySelectorAll('.stu-chip').forEach(chip => {
     chip.addEventListener('dragstart', e => {
       dragSid = Number(chip.dataset.sid);
@@ -108,6 +112,67 @@ async function render(view) {
       e.dataTransfer.effectAllowed = 'move';
     });
     chip.addEventListener('dragend', () => { chip.classList.remove('dragging'); dragSid = null; });
+
+    chip.addEventListener('touchstart', e => {
+      const touch = e.touches[0];
+      touchStartPos = { x: touch.clientX, y: touch.clientY };
+      touchDragging = false;
+      dragSid = Number(chip.dataset.sid);
+    }, { passive: true });
+
+    chip.addEventListener('touchmove', e => {
+      if (dragSid === null) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartPos.x;
+      const dy = touch.clientY - touchStartPos.y;
+
+      if (!touchDragging && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+        touchDragging = true;
+        chip.classList.add('dragging');
+        touchGhost = chip.cloneNode(true);
+        touchGhost.classList.add('touch-ghost');
+        touchGhost.style.cssText = 'position:fixed;z-index:99998;pointer-events:none;opacity:.85;transform:scale(1.05);transition:none';
+        document.body.appendChild(touchGhost);
+      }
+
+      if (touchGhost) {
+        touchGhost.style.left = (touch.clientX - 40) + 'px';
+        touchGhost.style.top = (touch.clientY - 25) + 'px';
+      }
+
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      view.querySelectorAll('.seat').forEach(s => s.classList.remove('drop-hover'));
+      if (el) {
+        const seat = el.closest('.seat');
+        if (seat) seat.classList.add('drop-hover');
+      }
+
+      if (touchDragging) e.preventDefault();
+    }, { passive: false });
+
+    chip.addEventListener('touchend', e => {
+      chip.classList.remove('dragging');
+      if (touchGhost) { touchGhost.remove(); touchGhost = null; }
+      view.querySelectorAll('.seat').forEach(s => s.classList.remove('drop-hover'));
+
+      if (touchDragging && dragSid !== null) {
+        const touch = e.changedTouches[0];
+        const el = document.elementFromPoint(touch.clientX, touch.clientY);
+        if (el) {
+          const seat = el.closest('.seat');
+          if (seat) placeSeat(dragSid, seat);
+        }
+      } else if (!touchDragging && dragSid !== null) {
+        const sid = dragSid;
+        S.selSid = S.selSid === sid ? null : sid;
+        rerender();
+      }
+
+      dragSid = null;
+      touchDragging = false;
+      touchStartPos = null;
+    });
+
     chip.addEventListener('click', () => {
       const sid = Number(chip.dataset.sid);
       S.selSid = S.selSid === sid ? null : sid;
