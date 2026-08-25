@@ -1008,3 +1008,43 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 .ql-editor-wrap .ql-toolbar.ql-snow .ql-formats:last-child { margin-right: 0; }
 .ql-editor-wrap .ql-toolbar button { width: 28px; height: 28px; padding: 2px; }
 .ql-editor-wrap .ql-toolbar button svg { width: 16px; height: 16px; }
+
+/* ---------- Score Bar ---------- */
+.score-bar-wrap { margin-top: 4px; }
+.score-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  background: #e8e8e8;
+  overflow: hidden;
+}
+.sb-base {
+  height: 100%;
+  background: linear-gradient(90deg, #0b6a9e, var(--primary));
+  border-radius: 999px 0 0 999px;
+  transition: width .4s ease;
+}
+.sb-ach {
+  height: 100%;
+  background: linear-gradient(90deg, #16a56a, var(--green));
+  transition: width .4s ease;
+}
+.sb-vio {
+  height: 100%;
+  background: linear-gradient(90deg, #f0a02c, #d13438);
+  transition: width .4s ease;
+}
+.sb-empty {
+  height: 100%;
+  background: transparent;
+}
+.score-bar-label {
+  display: flex;
+  gap: 8px;
+  margin-top: 3px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sb-lbl-base { color: var(--primary); }
+.sb-lbl-ach { color: var(--green); }
+.sb-lbl-vio { color: var(--red); }

@@ -745,10 +745,11 @@ router.get('/summary', requireAuth, (req, res) => {
     });
     return { id: st.id, name: st.name, groupId: st.groupId, achievement: ach, violation: vio, total: baseStu + ach - vio };
   }).sort((a, b) => b.total - a.total);
-  const perGroup = groupsScope.map(g => ({
-    id: g.id, name: g.name,
-    total: perStudent.filter(s => s.groupId === g.id).reduce((t, s) => t + s.total, 0)
-  }));
+  const perGroup = groupsScope.map(g => {
+    const members = perStudent.filter(s => s.groupId === g.id);
+    const avg = members.length ? members.reduce((t, s) => t + s.total, 0) / members.length : 0;
+    return { id: g.id, name: g.name, total: Math.round(avg * 10) / 10, count: members.length };
+  });
   res.json({
     students: perStudent,
     groups: perGroup,

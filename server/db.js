@@ -156,7 +156,7 @@ function defaults() {
       grade: 12,
       weeks: 35,
       startDate: '2025-09-08',
-      baseStudentWeek: 10,
+      baseStudentWeek: 100,
       baseClassWeek: 400
     },
     users,

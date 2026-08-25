@@ -1,6 +1,6 @@
 import { api } from '../core/http.js';
 import { S } from '../core/state.js';
-import { esc, toast, confirmDlg, fmtDateTime, barHtml } from '../core/ui.js';
+import { esc, toast, confirmDlg, fmtDateTime, scoreBar } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { setBadge } from '../core/layout.js';
 import { renderPendingSection } from '../teacher/approvals.js';
@@ -49,13 +49,13 @@ async function render(view) {
     <div class="card"><h3><i class="fa-solid fa-trophy"></i> Bảng điểm tuần ${S.week}</h3>
       ${S.perms.isTeacher && sum.groups.length ? `<div class="grid3" style="margin-bottom:14px">${sum.groups.map(g => `
         <div class="card stat mb0" style="box-shadow:none;border:1px solid var(--border)">
-          <div class="num" style="font-size:22px;color:${g.total >= 0 ? 'var(--green)' : 'var(--red)'}">${g.total}</div>
-          <div class="lbl">${esc(g.name)}</div></div>`).join('')}</div>` : ''}
+          <div class="num" style="font-size:22px;color:${g.total >= (sum.baseStudentWeek || 10) ? 'var(--green)' : 'var(--red)'}">${g.total}</div>
+          <div class="lbl">${esc(g.name)} (${g.count} HS)</div></div>`).join('')}</div>` : ''}
       <table class="tbl"><thead><tr><th>Học sinh</th><th>Thành tích</th><th>Vi phạm</th><th>Tổng</th><th style="width:180px"></th></tr></thead>
       <tbody>${sum.students.map(s => `<tr><td>${esc(s.name)}</td>
         <td style="color:var(--green)">+${s.achievement}</td><td style="color:var(--red)">-${s.violation}</td>
         <td><b>${s.total}</b></td>
-        <td>${barHtml(s.total, Math.max((sum.baseStudentWeek || 0) * 2, 1), sum.baseStudentWeek || 0)}</td></tr>`).join('')}</tbody></table>
+        <td>${scoreBar(sum.baseStudentWeek, s.achievement, s.violation)}</td></tr>`).join('')}</tbody></table>
     </div>`;
 
   const pz = document.getElementById('pending-zone');

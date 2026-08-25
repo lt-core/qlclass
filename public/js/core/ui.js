@@ -90,3 +90,31 @@ export function barHtml(value, max, warnBelow = 0) {
   const pct = Math.max(0, Math.min(100, (value || 0) * 100 / (max || 1)));
   return `<div class="bar"><div class="${value < warnBelow ? 'warn' : ''}" style="width:${pct}%"></div></div>`;
 }
+
+export function scoreBar(base, achievement, violation) {
+  const b = Math.max(0, base || 0);
+  const a = Math.max(0, achievement || 0);
+  const v = Math.max(0, violation || 0);
+  const total = b + a - v;
+  const max = b + a;
+  const basePct = max > 0 ? (b * 100 / max) : 100;
+  const achPct = max > 0 ? (a * 100 / max) : 0;
+  const vioPct = max > 0 ? (v * 100 / max) : 0;
+  const baseW = Math.min(100, basePct);
+  const achW = Math.min(100 - baseW, achPct);
+  const vioW = Math.min(100 - baseW - achW, vioPct);
+  const restW = Math.max(0, 100 - baseW - achW - vioW);
+  return `<div class="score-bar-wrap">
+    <div class="score-bar">
+      <div class="sb-base" style="width:${baseW}%"></div>
+      ${a > 0 ? `<div class="sb-ach" style="width:${achW}%"></div>` : ''}
+      ${v > 0 ? `<div class="sb-vio" style="width:${vioW}%"></div>` : ''}
+      ${restW > 0 ? `<div class="sb-empty" style="width:${restW}%"></div>` : ''}
+    </div>
+    <div class="score-bar-label">
+      <span class="sb-lbl-base">${total}</span>
+      ${a > 0 ? `<span class="sb-lbl-ach">+${a}</span>` : ''}
+      ${v > 0 ? `<span class="sb-lbl-vio">-${v}</span>` : ''}
+    </div>
+  </div>`;
+}

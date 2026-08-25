@@ -1,6 +1,6 @@
 import { api } from '../core/http.js';
 import { S, POS_LABEL } from '../core/state.js';
-import { esc, renderContent, barHtml } from '../core/ui.js';
+import { esc, renderContent, scoreBar } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { setBadge } from '../core/layout.js';
 
@@ -11,15 +11,14 @@ async function render(view) {
   if (S.perms.isTeacher) {
     statsHtml = `
       <div class="grid3">
-        <div class="card stat blue"><div class="num">${sum.classTotal}</div><div class="lbl">Điểm tuần này của lớp (mặc định ${sum.baseClassWeek})</div>
-          ${barHtml(sum.classTotal, Math.max((sum.baseClassWeek || 0) * 1.5, 1), sum.baseClassWeek || 0)}</div>
+        <div class="card stat blue"><div class="num">${sum.classTotal}</div><div class="lbl">Điểm tuần này của lớp (mặc định ${sum.baseClassWeek})</div></div>
         <div class="card stat green"><div class="num">${sum.students.reduce((t, s) => t + s.achievement, 0)}</div><div class="lbl">Tổng điểm thành tích</div></div>
         <div class="card stat red"><div class="num">${sum.students.reduce((t, s) => t + s.violation, 0)}</div><div class="lbl">Tổng điểm vi phạm</div></div>
       </div>
-      <div class="card"><h3>Điểm các tổ</h3><div class="grid3">
+      <div class="card"><h3>Điểm các tổ (trung bình)</h3><div class="grid3">
         ${sum.groups.map(g => `<div class="card stat mb0" style="box-shadow:none;border:1px solid var(--border)">
-          <div class="num" style="font-size:22px;color:${g.total >= 0 ? 'var(--green)' : 'var(--red)'}">${g.total}</div>
-          <div class="lbl">${esc(g.name)}</div></div>`).join('')}
+          <div class="num" style="font-size:22px;color:${g.total >= (sum.baseStudentWeek || 10) ? 'var(--green)' : 'var(--red)'}">${g.total}</div>
+          <div class="lbl">${esc(g.name)} (${g.count} HS)</div></div>`).join('')}
       </div></div>`;
   } else if (S.perms.isStudent && sum.students.length) {
     const mineId = (S.student || {}).id;
@@ -46,7 +45,7 @@ async function render(view) {
         <div class="card stat green"><div class="num">${mine ? mine.achievement : 0}</div><div class="lbl">Điểm thành tích của tôi</div></div>
         <div class="card stat red"><div class="num">${mine ? mine.violation : 0}</div><div class="lbl">Điểm vi phạm của tôi</div></div>
         <div class="card stat blue"><div class="num">${mine ? mine.total : 0}</div><div class="lbl">Điểm tuần này của tôi (mặc định ${sum.baseStudentWeek})</div>
-          ${barHtml(mine ? mine.total : 0, Math.max((sum.baseStudentWeek || 0) * 2, 1), sum.baseStudentWeek || 0)}</div>
+          ${scoreBar(sum.baseStudentWeek, mine ? mine.achievement : 0, mine ? mine.violation : 0)}</div>
       </div>
       <div class="card"><h3>Tổ của tôi</h3>
         <table class="tbl"><thead><tr><th>Học sinh</th><th>Thành tích</th><th>Vi phạm</th><th>Tổng</th></tr></thead>
