@@ -1,6 +1,8 @@
 import { api } from '../core/http.js';
-import { esc, toast, confirmDlg, fmtDate, mdToHtml } from '../core/ui.js';
+import { S } from '../core/state.js';
+import { esc, toast, confirmDlg, fmtDate, renderContent, openModal } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
+import { createEditor } from '../core/editor.js';
 
 async function render(el) {
   const [items, students] = await Promise.all([api('/culture?week=' + S.week), api('/students')]);
@@ -17,7 +19,7 @@ async function render(el) {
           <span style="flex:1"></span>
           ${can ? `<button class="btn sm secondary" data-ct-edit="${c.id}"><i class="fa-solid fa-pen"></i> Sửa</button><button class="btn sm red" data-ct-del="${c.id}">Xóa</button>` : ''}
         </div>
-        ${c.desc ? `<div class="md-preview">${mdToHtml(c.desc)}</div>` : ''}
+        ${c.desc ? `<div class="md-preview">${renderContent(c.desc)}</div>` : ''}
         <table class="tbl" style="margin-top:8px"><thead><tr><th>Học sinh</th><th>Đánh giá</th></tr></thead>
         <tbody>${students.map(st => {
           const lv = (c.ratings || {})[st.id] || '';
@@ -53,20 +55,17 @@ async function render(el) {
       body: `
         <label class="f">Tên hoạt động</label><input type="text" id="ct-name" value="${esc(item ? item.name : '')}">
         <label class="f">Ngày</label><input type="date" id="ct-date" value="${item ? item.date : new Date().toISOString().slice(0, 10)}">
-        <label class="f">Mô tả (Markdown)</label><textarea id="ct-desc">${esc(item ? item.desc : '')}</textarea>
-        <div class="md-preview" id="ct-prev"></div>
+        <label class="f">Mô tả</label>
+        <div id="ct-editor"></div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
           <button class="btn secondary" id="ct-cancel">Hủy</button>
           <button class="btn" id="ct-save">Lưu</button></div>`
     });
-    const ta = m.el.querySelector('#ct-desc');
-    const prev = m.el.querySelector('#ct-prev');
-    const upd = () => { prev.innerHTML = mdToHtml(ta.value); };
-    ta.oninput = upd;
-    upd();
+    const editor = createEditor(m.el.querySelector('#ct-editor'), { placeholder: 'Mô tả hoạt động...', height: '140px' });
+    if (item && item.desc) editor.setContents(item.desc);
     m.el.querySelector('#ct-cancel').onclick = m.close;
     m.el.querySelector('#ct-save').onclick = async () => {
-      const body = { name: m.el.querySelector('#ct-name').value, date: m.el.querySelector('#ct-date').value, desc: ta.value };
+      const body = { name: m.el.querySelector('#ct-name').value, date: m.el.querySelector('#ct-date').value, desc: editor.getHTML() };
       try {
         if (item) await api('/culture/' + item.id, { method: 'PUT', body });
         else await api('/culture', { method: 'POST', body });

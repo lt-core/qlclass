@@ -1,5 +1,6 @@
 import { api } from '../core/http.js';
 import { esc, toast, openModal } from '../core/ui.js';
+import { createEditor } from '../core/editor.js';
 
 export function openAnModal(item, done) {
   const m = openModal({
@@ -16,25 +17,21 @@ export function openAnModal(item, done) {
           </select></div>
         <div style="flex:1"><label class="f">Tự động hết hạn (tùy chọn)</label><input type="datetime-local" id="an-exp" value="${item && item.expiresAt ? item.expiresAt.slice(0, 16) : ''}"></div>
       </div>
-      <label class="f">Nội dung (Markdown — có thể copy/paste)</label>
-      <textarea id="an-content" style="min-height:140px">${esc(item ? item.content : '')}</textarea>
-      <div class="md-preview" id="an-prev"></div>
+      <label class="f">Nội dung</label>
+      <div id="an-editor"></div>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
         <button class="btn secondary" id="an-cancel">Hủy</button>
         <button class="btn" id="an-save">Lưu thông báo</button></div>`
   });
-  const ta = m.el.querySelector('#an-content');
-  const prev = m.el.querySelector('#an-prev');
-  const upd = () => { prev.innerHTML = mdToHtml(ta.value); };
-  ta.oninput = upd;
-  upd();
+  const editor = createEditor(m.el.querySelector('#an-editor'), { placeholder: 'Soạn nội dung thông báo...', height: '180px' });
+  if (item && item.content) editor.setContents(item.content);
   m.el.querySelector('#an-cancel').onclick = m.close;
   m.el.querySelector('#an-save').onclick = async () => {
     const expRaw = m.el.querySelector('#an-exp').value;
     const body = {
       title: m.el.querySelector('#an-title').value,
       audience: m.el.querySelector('#an-aud').value,
-      content: ta.value,
+      content: editor.getHTML(),
       expiresAt: expRaw ? new Date(expRaw).toISOString() : null
     };
     try {

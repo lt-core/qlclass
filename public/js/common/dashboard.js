@@ -1,6 +1,6 @@
 import { api } from '../core/http.js';
 import { S, POS_LABEL } from '../core/state.js';
-import { esc, mdToHtml, barHtml } from '../core/ui.js';
+import { esc, renderContent, barHtml } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { setBadge } from '../core/layout.js';
 
@@ -80,7 +80,7 @@ async function render(view) {
         <div class="card ann-card" style="box-shadow:none;border:1px solid var(--border);border-left:4px solid var(--primary);margin-bottom:10px">
           <h4>${esc(a.title)}</h4>
           <div class="ann-meta"><i class="fa-solid fa-user"></i> ${esc(a.createdBy || '')}${a.expiresAt ? ` • Hết hạn: ${new Date(a.expiresAt).toLocaleString('vi-VN')}` : ''}</div>
-          <div class="md-preview">${mdToHtml(a.content)}</div>
+          <div class="md-preview">${renderContent(a.content)}</div>
         </div>`).join('') : '<div class="empty">Chưa có thông báo nào</div>'}
     </div>`;
 }

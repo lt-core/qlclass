@@ -4,6 +4,13 @@ import { enhance } from './controls.js';
 export const esc = escapeHtml;
 export { mdToHtml };
 
+export function renderContent(src) {
+  if (!src || !src.trim()) return '';
+  const s = src.trim();
+  const looksHtml = /<[a-z][\s\S]*>/i.test(s);
+  return looksHtml ? s : mdToHtml(s);
+}
+
 let _loadingCount = 0;
 let _loadingEl = null;
 

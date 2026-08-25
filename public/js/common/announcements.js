@@ -1,6 +1,6 @@
 import { api } from '../core/http.js';
 import { S } from '../core/state.js';
-import { esc, mdToHtml, toast, confirmDlg } from '../core/ui.js';
+import { esc, renderContent, toast, confirmDlg } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { openAnModal } from '../student/announcements-manage.js';
 
@@ -22,7 +22,7 @@ async function render(view) {
           ${can ? `<button class="btn sm secondary" data-an-edit="${a.id}"><i class="fa-solid fa-pen"></i> Sửa</button> <button class="btn sm red" data-an-del="${a.id}">Xóa</button>` : ''}
         </div>
         <div class="ann-meta"><i class="fa-solid fa-user"></i> ${esc(a.createdBy || '')} • <i class="fa-regular fa-clock"></i> ${new Date(a.createdAt).toLocaleString('vi-VN')}${a.expiresAt ? ` • Hết hạn: ${new Date(a.expiresAt).toLocaleString('vi-VN')}` : ' • Không hết hạn'}</div>
-        <div class="md-preview">${mdToHtml(a.content)}</div>
+        <div class="md-preview">${renderContent(a.content)}</div>
       </div>`;
     }).join('') : '<div class="card empty">Chưa có thông báo nào</div>'}`;
   if (can) {
