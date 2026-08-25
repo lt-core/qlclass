@@ -889,6 +889,12 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 
   #toasts { left: 12px; right: 12px; bottom: 12px; }
   .toast { max-width: none; }
+
+  /* Score table: keep progress bar visible on mobile */
+  .score-bar-wrap { width: 100%; }
+  .score-bar { width: 100%; }
+  .input-suffix { width: 100%; }
+  .input-suffix input { width: 100%; }
 }
 
 @media (max-width: 560px) {
@@ -1010,7 +1016,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 .ql-editor-wrap .ql-toolbar button svg { width: 16px; height: 16px; }
 
 /* ---------- Score Bar ---------- */
-.score-bar-wrap { margin-top: 4px; }
+.score-bar-wrap { margin-top: 4px; width: 100%; }
 .score-bar {
   display: flex;
   height: 8px;
@@ -1048,3 +1054,22 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 .sb-lbl-base { color: var(--primary); }
 .sb-lbl-ach { color: var(--green); }
 .sb-lbl-vio { color: var(--red); }
+
+/* ---------- Input Suffix ---------- */
+.input-suffix {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.input-suffix input {
+  padding-right: 28px;
+}
+.input-suffix .suffix {
+  position: absolute;
+  right: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+  opacity: 0.6;
+}
