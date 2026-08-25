@@ -893,8 +893,6 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
   /* Score table: keep progress bar visible on mobile */
   .score-bar-wrap { width: 100%; }
   .score-bar { width: 100%; }
-  .input-suffix { width: 100%; }
-  .input-suffix input { width: 100%; }
 }
 
 @media (max-width: 560px) {
@@ -1058,11 +1056,13 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 /* ---------- Input Suffix ---------- */
 .input-suffix {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  width: 100%;
 }
 .input-suffix input {
   padding-right: 28px;
+  width: 100%;
 }
 .input-suffix .suffix {
   position: absolute;
