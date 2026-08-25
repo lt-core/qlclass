@@ -103,6 +103,8 @@ async function render(view) {
   let touchGhost = null;
   let touchStartPos = null;
   let touchDragging = false;
+  let lastHoverSeat = null;
+  let clickBlocker = 0;
 
   view.querySelectorAll('.stu-chip').forEach(chip => {
     chip.addEventListener('dragstart', e => {
@@ -118,6 +120,7 @@ async function render(view) {
       touchStartPos = { x: touch.clientX, y: touch.clientY };
       touchDragging = false;
       dragSid = Number(chip.dataset.sid);
+      lastHoverSeat = null;
     }, { passive: true });
 
     chip.addEventListener('touchmove', e => {
@@ -140,40 +143,58 @@ async function render(view) {
         touchGhost.style.top = (touch.clientY - 25) + 'px';
       }
 
+      if (touchGhost) touchGhost.style.display = 'none';
       const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (touchGhost) touchGhost.style.display = '';
+
       view.querySelectorAll('.seat').forEach(s => s.classList.remove('drop-hover'));
+      lastHoverSeat = null;
       if (el) {
         const seat = el.closest('.seat');
-        if (seat) seat.classList.add('drop-hover');
+        if (seat) {
+          seat.classList.add('drop-hover');
+          lastHoverSeat = seat;
+        }
       }
 
       if (touchDragging) e.preventDefault();
     }, { passive: false });
 
     chip.addEventListener('touchend', e => {
+      const wasTouchDrag = touchDragging;
       chip.classList.remove('dragging');
       if (touchGhost) { touchGhost.remove(); touchGhost = null; }
       view.querySelectorAll('.seat').forEach(s => s.classList.remove('drop-hover'));
 
-      if (touchDragging && dragSid !== null) {
-        const touch = e.changedTouches[0];
-        const el = document.elementFromPoint(touch.clientX, touch.clientY);
-        if (el) {
-          const seat = el.closest('.seat');
-          if (seat) placeSeat(dragSid, seat);
+      if (wasTouchDrag && dragSid !== null) {
+        if (lastHoverSeat) {
+          placeSeat(dragSid, lastHoverSeat);
+        } else {
+          const touch = e.changedTouches[0];
+          const el = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (el) {
+            const seat = el.closest('.seat');
+            if (seat) placeSeat(dragSid, seat);
+          }
         }
-      } else if (!touchDragging && dragSid !== null) {
+      } else if (!wasTouchDrag && dragSid !== null) {
         const sid = dragSid;
         S.selSid = S.selSid === sid ? null : sid;
         rerender();
       }
 
+      if (wasTouchDrag) {
+        clickBlocker = Date.now();
+      }
+
       dragSid = null;
       touchDragging = false;
       touchStartPos = null;
+      lastHoverSeat = null;
     });
 
-    chip.addEventListener('click', () => {
+    chip.addEventListener('click', e => {
+      if (Date.now() - clickBlocker < 400) { e.stopImmediatePropagation(); return; }
       const sid = Number(chip.dataset.sid);
       S.selSid = S.selSid === sid ? null : sid;
       rerender();
