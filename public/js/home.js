@@ -24,7 +24,7 @@ export function renderHome() {
       </section>
 
       <section class="home-feats">
-        <h2>Tính năng chính</h2>
+        <h2>Tính năng của App</h2>
         <div class="feat-grid">
           <div class="feat-card"><i class="fa-solid fa-scale-balanced"></i>
             <b>Thành tích & vi phạm</b>

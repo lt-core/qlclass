@@ -4,6 +4,29 @@ import { enhance } from './controls.js';
 export const esc = escapeHtml;
 export { mdToHtml };
 
+let _loadingCount = 0;
+let _loadingEl = null;
+
+function _ensureLoader() {
+  if (_loadingEl) return;
+  _loadingEl = document.createElement('div');
+  _loadingEl.id = 'global-loading';
+  _loadingEl.innerHTML = '<div class="loading-spinner"></div>';
+  _loadingEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:99999;background:rgba(255,255,255,.45);backdrop-filter:blur(2px);justify-content:center;align-items:center;pointer-events:all';
+  document.body.appendChild(_loadingEl);
+}
+
+export function showLoading() {
+  _ensureLoader();
+  _loadingCount++;
+  if (_loadingCount === 1) _loadingEl.style.display = 'flex';
+}
+
+export function hideLoading() {
+  _loadingCount = Math.max(0, _loadingCount - 1);
+  if (_loadingCount === 0 && _loadingEl) _loadingEl.style.display = 'none';
+}
+
 export function toast(msg, type) {
   let box = document.getElementById('toasts');
   if (!box) { box = document.createElement('div'); box.id = 'toasts'; document.body.appendChild(box); }
