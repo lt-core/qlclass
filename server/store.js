@@ -145,6 +145,8 @@ async function persistIfDirty() {
 
 async function persistNow() {
   if (!state) return;
+  clearTimeout(saveTimer);
+  dirty = false;
   if (USE_DB) await flushDoc();
   else writeFileBackend();
 }

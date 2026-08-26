@@ -6,14 +6,31 @@ const api = require('./api');
 const app = express();
 app.use(express.json({ limit: '4mb' }));
 
-app.use((req, res, next) => {
-  if (!process.env.VERCEL) {
+if (process.env.VERCEL) {
+  app.use((req, res, next) => {
+    const origJson = res.json.bind(res);
+    const origSend = res.send.bind(res);
+    let persisted = false;
+    const doSave = (fn) => {
+      if (persisted) return fn();
+      persisted = true;
+      store.persistNow().then(fn).catch(err => {
+        console.error('[store] Persist failed:', err);
+        fn();
+      });
+    };
+    res.json = (body) => { doSave(() => origJson(body)); return res; };
+    res.send = (body) => { doSave(() => origSend(body)); return res; };
+    next();
+  });
+} else {
+  app.use((req, res, next) => {
     res.on('finish', () => {
       store.persistIfDirty().catch(e => console.error('[store] Loi luu du lieu:', e));
     });
-  }
-  next();
-});
+    next();
+  });
+}
 
 app.get('/uploads/:name', async (req, res) => {
   try {
