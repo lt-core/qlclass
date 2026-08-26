@@ -11,14 +11,17 @@ if (process.env.VERCEL) {
     const origJson = res.json.bind(res);
     const origSend = res.send.bind(res);
     let persisted = false;
+    let persistOk = null;
     const doSave = (fn) => {
-      if (persisted) return fn();
+      if (persisted) { if (persistOk === false) return send500(); return fn(); }
       persisted = true;
-      store.persistNow().then(fn).catch(err => {
-        console.error('[store] Persist failed:', err);
-        fn();
+      persistOk = store.persistNow().then(() => { persistOk = true; fn(); }).catch(err => {
+        console.error('[store] Persist failed:', err.message || err);
+        persistOk = false;
+        send500();
       });
     };
+    const send500 = () => { if (!res.headersSent) res.status(500).json({ error: 'Lỗi lưu dữ liệu' }); };
     res.json = (body) => { doSave(() => origJson(body)); return res; };
     res.send = (body) => { doSave(() => origSend(body)); return res; };
     next();

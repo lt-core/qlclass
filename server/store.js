@@ -14,13 +14,20 @@ let dirty = false;
 let readyPromise = null;
 
 let dbClient = null;
+let dbClientAt = 0;
 async function client() {
+  const now = Date.now();
+  if (dbClient && (now - dbClientAt) > 3_600_000) {
+    try { dbClient.close(); } catch (_) {}
+    dbClient = null;
+  }
   if (!dbClient) {
     const { createClient } = require('@libsql/client');
     dbClient = createClient({
       url: TURSO_URL,
       authToken: process.env.TURSO_AUTH_TOKEN || undefined
     });
+    dbClientAt = now;
   }
   return dbClient;
 }
@@ -73,6 +80,7 @@ function getFileFromDisk(name) {
 
 async function initDbBackend(defaults) {
   const c = await client();
+  console.log('[store] Ket noi Turso:', TURSO_URL.replace(/\/\/.*@/, '//***@'));
   await c.execute(`CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)`);
   await c.execute(`CREATE TABLE IF NOT EXISTS files (
     name TEXT PRIMARY KEY, mime TEXT NOT NULL, size INTEGER NOT NULL,
@@ -114,11 +122,17 @@ async function initDbBackend(defaults) {
 
 async function flushDoc() {
   const c = await client();
-  await c.execute({
-    sql: `INSERT INTO kv (k, v) VALUES (?, ?)
-          ON CONFLICT(k) DO UPDATE SET v = excluded.v`,
-    args: [DOC_KEY, JSON.stringify(state)]
-  });
+  const payload = JSON.stringify(state);
+  try {
+    await c.execute({
+      sql: `INSERT INTO kv (k, v) VALUES (?, ?)
+            ON CONFLICT(k) DO UPDATE SET v = excluded.v`,
+      args: [DOC_KEY, payload]
+    });
+  } catch (err) {
+    console.error('[store] flushDoc FAILED:', err.message || err);
+    throw err;
+  }
 }
 
 /* ---------- API chung cho api.js (van dong bo nhu cu) ---------- */
@@ -147,8 +161,11 @@ async function persistNow() {
   if (!state) return;
   clearTimeout(saveTimer);
   dirty = false;
-  if (USE_DB) await flushDoc();
-  else writeFileBackend();
+  if (USE_DB) {
+    await flushDoc();
+  } else {
+    writeFileBackend();
+  }
 }
 
 function nextId(collection) {

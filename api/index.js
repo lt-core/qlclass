@@ -5,6 +5,10 @@ const store = require('../server/store');
 module.exports = async (req, res) => {
   try {
     await dbu.init();
+    if (!global.__initLogged) {
+      global.__initLogged = true;
+      console.log('[serverless] init — USE_DB:', store.useDb, 'VERCEL:', !!process.env.VERCEL, 'method:', req.method, req.url);
+    }
     await new Promise(resolve => {
       res.on('finish', resolve);
       res.on('close', resolve);
