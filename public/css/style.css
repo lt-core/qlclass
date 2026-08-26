@@ -797,6 +797,17 @@ input[type="date"], input[type="datetime-local"] { padding-right: 38px; }
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 input[type="time"]::-webkit-calendar-picker-indicator { display: none !important; }
+.cdp input[type="date"], .cdp input[type="datetime-local"] {
+  position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none;
+}
+.cdp-display {
+  display: block; width: 100%; min-height: 38px; padding: 8px 38px 8px 12px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); font: inherit; font-size: 14px; color: var(--text);
+  cursor: pointer; line-height: 22px;
+  transition: border-color .15s;
+}
+.cdp-display:hover { border-color: #bbb; }
 .cdp-btn {
   position: absolute; right: 5px; top: 50%;
   transform: translateY(-50%);

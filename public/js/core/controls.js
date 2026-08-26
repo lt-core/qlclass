@@ -194,6 +194,10 @@ function upgradeDate(inp) {
   inp.parentNode.insertBefore(wrap, inp);
   wrap.appendChild(inp);
 
+  const display = document.createElement('span');
+  display.className = 'cdp-display';
+  wrap.appendChild(display);
+
   const btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'cdp-btn';
@@ -224,11 +228,19 @@ function upgradeDate(inp) {
 
   const widget = makeWidget(wrap, pop, inp);
 
+  const fmtDisplay = () => {
+    if (!inp.value) return '';
+    return `${pad2(cur.d)}/${pad2(cur.m)}/${cur.y}`;
+  };
+
   const write = () => {
     inp.value = `${String(cur.y).padStart(4, '0')}-${pad2(cur.m)}-${pad2(cur.d)}` +
       (isDT ? `T${pad2(cur.hh)}:${pad2(cur.mm)}` : '');
+    display.textContent = fmtDisplay();
     fireChange(inp);
   };
+
+  display.textContent = fmtDisplay();
 
   const render = () => {
     const firstDow = (new Date(cur.y, cur.m - 1, 1).getDay() + 6) % 7;
