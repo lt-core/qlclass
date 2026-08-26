@@ -7,9 +7,11 @@ const app = express();
 app.use(express.json({ limit: '4mb' }));
 
 app.use((req, res, next) => {
-  res.on('finish', () => {
-    store.persistIfDirty().catch(e => console.error('[store] Loi luu du lieu:', e));
-  });
+  if (!process.env.VERCEL) {
+    res.on('finish', () => {
+      store.persistIfDirty().catch(e => console.error('[store] Loi luu du lieu:', e));
+    });
+  }
   next();
 });
 

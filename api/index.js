@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
       res.on('close', resolve);
       app(req, res);
     });
-    await store.persistIfDirty();
+    await store.persistNow();
   } catch (e) {
     console.error('[serverless]', e);
     if (!res.headersSent) res.status(500).json({ error: 'Lỗi máy chủ' });
