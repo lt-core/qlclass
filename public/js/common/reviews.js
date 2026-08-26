@@ -1,5 +1,5 @@
 import { api } from '../core/http.js';
-import { S } from '../core/state.js';
+import { S, weekDisplay } from '../core/state.js';
 import { esc, renderContent, toast, openModal } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { createEditor } from '../core/editor.js';
@@ -8,6 +8,7 @@ async function render(view) {
   const reviews = await api('/reviews?week=' + S.week);
   const classRv = reviews.find(r => r.type === 'class');
   const studyRv = reviews.find(r => r.type === 'study');
+  const isSummary = typeof S.week === 'string';
   const card = (type, title, rv, canEdit) => `
     <div class="card"><h3>${title}</h3>
       <div id="rv-show-${type}">
@@ -21,10 +22,10 @@ async function render(view) {
           <button class="btn secondary" data-rv-cancel="${type}">Hủy</button>
           <button class="btn" data-rv-save="${type}">Lưu nhận xét</button></div>
       </div>
-      ${canEdit ? `<div style="text-align:right;margin-top:8px"><button class="btn sm secondary" data-rv-edit="${type}"><i class="fa-solid fa-pen"></i> ${rv && rv.content ? 'Sửa' : 'Viết nhận xét'}</button></div>` : ''}
+      ${canEdit && !isSummary ? `<div style="text-align:right;margin-top:8px"><button class="btn sm secondary" data-rv-edit="${type}"><i class="fa-solid fa-pen"></i> ${rv && rv.content ? 'Sửa' : 'Viết nhận xét'}</button></div>` : ''}
     </div>`;
   view.innerHTML = `
-    <h2 class="page-title">Nhận xét tuần ${S.week}</h2>
+    <h2 class="page-title">Nhận xét ${weekDisplay(S.week)}</h2>
     <p class="page-sub">Nhận xét chung của lớp trưởng và lớp phó học tập vào cuối mỗi tuần.</p>
     <div class="grid2">
       ${card('class', '<i class="fa-solid fa-user-tie"></i> Lớp trưởng', classRv, S.perms.reviewClass)}

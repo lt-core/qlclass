@@ -6,6 +6,7 @@ const dbu = require('./db');
 const router = express.Router();
 const COOKIE = 'qlc_token';
 const POSITIONS = ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy', 'to_truong', 'bi_thu', 'pho_bi_thu', 'uy_vien'];
+const SUMMARY_WEEK_RANGES = { s1mid: [0, 9], s1end: [0, 18], s2mid: [19, 27], s2end: [19, 36], year: [0, 36] };
 
 function getDb() { return store.get(); }
 
@@ -65,7 +66,17 @@ function weekOf(dateStr) {
   const d = new Date((dateStr || new Date().toISOString().slice(0, 10)) + 'T00:00:00');
   if (isNaN(start) || isNaN(d)) return 1;
   let w = Math.floor((d - start) / (7 * 86400000)) + 1;
-  return Math.min(Math.max(w, 1), s.weeks || 35);
+  if (w < 1) w = 0;
+  return Math.min(w, s.weeks || 36);
+}
+
+function weekInRange(recordWeek, weekParam) {
+  if (!weekParam) return true;
+  const w = Number(weekParam);
+  if (!isNaN(w)) return recordWeek === w;
+  const range = SUMMARY_WEEK_RANGES[weekParam];
+  if (!range) return true;
+  return recordWeek >= range[0] && recordWeek <= range[1];
 }
 
 function currentWeek() { return weekOf(new Date().toISOString().slice(0, 10)); }
@@ -308,6 +319,13 @@ router.delete('/groups/:id', requireAuth, requireTeacher, (req, res) => {
 });
 
 router.get('/students', requireAuth, (req, res) => {
+  const db = getDb();
+  if (req.query.all === '1' && req.user.role === 'student') {
+    const perms = buildPermissions(req);
+    if (perms.manageLabor || perms.manageCulture || perms.manageTreasury || perms.reviewClass || perms.reviewStudy || perms.addRecords) {
+      return res.json(db.students);
+    }
+  }
   res.json(scopeStudents(req));
 });
 
@@ -427,7 +445,7 @@ router.get('/records', requireAuth, (req, res) => {
   const allowed = new Set(scopeStudents(req).map(s => s.id));
   let list = db.records.slice().reverse();
   if (req.user.role === 'student') list = list.filter(r => allowed.has(r.studentId));
-  if (week) list = list.filter(r => r.week === Number(week));
+  if (week) list = list.filter(r => weekInRange(r.week, week));
   if (status) list = list.filter(r => r.status === status);
   res.json(list.map(r => ({
     ...r,
@@ -452,7 +470,7 @@ router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
     studentId: st.id,
     typeId: t.id,
     kind: t.kind,
-    week: Math.min(Math.max(Number(b.week) || currentWeek(), 1), db.settings.weeks || 35),
+    week: Math.min(Math.max(Number(b.week) || currentWeek(), 0), db.settings.weeks || 36),
     note: String(b.note || ''),
     status: 'pending',
     createdBy: req.user.id,
@@ -493,7 +511,7 @@ router.delete('/records/:id', requireAuth, (req, res) => {
 router.get('/reviews', requireAuth, (req, res) => {
   const db = getDb();
   let list = db.reviews;
-  if (req.query.week) list = list.filter(r => r.week === Number(req.query.week));
+  if (req.query.week) list = list.filter(r => weekInRange(r.week, req.query.week));
   res.json(list);
 });
 
@@ -517,7 +535,16 @@ router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), (
 router.get('/labor', requireAuth, (req, res) => {
   const db = getDb();
   let list = db.labor.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  if (req.query.week) list = list.filter(l => weekOf(l.date) === Number(req.query.week));
+  if (req.query.week) {
+    const wq = req.query.week;
+    const wn = Number(wq);
+    if (!isNaN(wn)) {
+      list = list.filter(l => weekOf(l.date) === wn);
+    } else {
+      const range = SUMMARY_WEEK_RANGES[wq];
+      if (range) list = list.filter(l => { const w = weekOf(l.date); return w >= range[0] && w <= range[1]; });
+    }
+  }
   res.json(list);
 });
 
@@ -578,7 +605,16 @@ router.delete('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), (req, res
 router.get('/culture', requireAuth, (req, res) => {
   const db = getDb();
   let list = db.culture.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  if (req.query.week) list = list.filter(c => weekOf(c.date) === Number(req.query.week));
+  if (req.query.week) {
+    const wq = req.query.week;
+    const wn = Number(wq);
+    if (!isNaN(wn)) {
+      list = list.filter(c => weekOf(c.date) === wn);
+    } else {
+      const range = SUMMARY_WEEK_RANGES[wq];
+      if (range) list = list.filter(c => { const w = weekOf(c.date); return w >= range[0] && w <= range[1]; });
+    }
+  }
   res.json(list);
 });
 
@@ -729,8 +765,8 @@ router.get('/summary', requireAuth, (req, res) => {
       pendingCount: 0
     });
   }
-  const weekQ = req.query.week ? Number(req.query.week) : null;
-  const recs = db.records.filter(r => r.status === 'approved' && (!weekQ || r.week === weekQ));
+  const weekQ = req.query.week || null;
+  const recs = db.records.filter(r => r.status === 'approved' && weekInRange(r.week, weekQ));
   const studentsScope = scopeStudents(req);
   const groupsScope = req.user.role === 'student'
     ? db.groups.filter(g => g.id === (studentsScope[0] || {}).groupId)

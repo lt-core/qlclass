@@ -154,7 +154,7 @@ function defaults() {
       schoolYear: '2025-2026',
       className: '12A1',
       grade: 12,
-      weeks: 35,
+      weeks: 36,
       startDate: '2025-09-08',
       baseStudentWeek: 100,
       baseClassWeek: 400

@@ -480,6 +480,33 @@ table.tbl tbody tr:hover td { background: #f7fbfe; }
   text-overflow: ellipsis;
 }
 .touch-ghost img { width: 26px; height: 26px; border-radius: 50%; object-fit: cover; }
+
+/* ---------- Labor / Culture rate grid ---------- */
+.lb-rate-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.lb-rate-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+.lb-rate-name {
+  font-size: 13.5px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .pool { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; min-height: 54px; }
 .pool .stu-chip { width: 112px; }
 

@@ -1,5 +1,5 @@
 import { api } from '../core/http.js';
-import { S, POS_LABEL } from '../core/state.js';
+import { S, POS_LABEL, weekDisplay } from '../core/state.js';
 import { esc, renderContent, scoreBar } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { setBadge } from '../core/layout.js';
@@ -72,7 +72,7 @@ async function render(view) {
   }
   view.innerHTML = `
     <h2 class="page-title">Tổng quan</h2>
-    <p class="page-sub">${S.perms.admin ? 'Quản trị hệ thống' : esc(S.settings.className) + ' • Năm học ' + esc(S.settings.schoolYear)} • Tuần ${S.week}/${S.settings.weeks}</p>
+    <p class="page-sub">${S.perms.admin ? 'Quản trị hệ thống' : esc(S.settings.className) + ' • Năm học ' + esc(S.settings.schoolYear)} • ${weekDisplay(S.week)}${typeof S.week === 'number' ? '/' + S.settings.weeks : ''}</p>
     ${statsHtml}
     <div class="card"><h3><i class="fa-solid fa-bullhorn"></i> Thông báo</h3>
       ${anns.length ? anns.map(a => `

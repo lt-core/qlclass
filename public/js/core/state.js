@@ -6,6 +6,14 @@ export const POS_LABEL = {
   to_truong: 'Tổ trưởng', bi_thu: 'Bí thư', pho_bi_thu: 'Phó bí thư', uy_vien: 'Ủy viên'
 };
 
+export const WEEK_LABEL = { s1mid: 'Giữa HK I', s1end: 'Cuối HK I', s2mid: 'Giữa HK II', s2end: 'Cuối HK II', year: 'Cả năm' };
+export const SUMMARY_KEYS = Object.keys(WEEK_LABEL);
+
+export function weekDisplay(w) {
+  if (typeof w === 'string' && WEEK_LABEL[w]) return WEEK_LABEL[w];
+  return 'Tuần ' + w;
+}
+
 export const S = {
   me: null, student: null, settings: null, groups: [], types: [], perms: {},
   week: 1, selSid: null, lifeTab: 'labor', counts: {}
@@ -21,9 +29,14 @@ export async function loadBootstrap() {
   S.perms = b.permissions;
   S.counts = b.counts || {};
   S.week = b.currentWeek;
-  const saved = Number(localStorage.getItem('qlc_week'));
-  if (Number.isInteger(saved) && saved >= 1 && saved <= (b.settings.weeks || 35)) {
-    S.week = saved;
+  const saved = localStorage.getItem('qlc_week');
+  if (saved !== null) {
+    const num = Number(saved);
+    if (Number.isInteger(num) && num >= 0 && num <= (b.settings.weeks || 36)) {
+      S.week = num;
+    } else if (SUMMARY_KEYS.includes(saved)) {
+      S.week = saved;
+    }
   }
   return b;
 }

@@ -1,4 +1,4 @@
-import { S, POS_LABEL } from './state.js';
+import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay } from './state.js';
 import { esc, toast, openModal } from './ui.js';
 import { navLinks, navigate, applyRouter } from './router.js';
 import { enhance, attachDropdown } from './controls.js';
@@ -54,17 +54,36 @@ export function renderApp() {
     forceLogin();
   };
   document.getElementById('week-sel').onchange = e => {
-    S.week = Number(e.target.value);
+    const v = e.target.value;
+    const num = Number(v);
+    S.week = isNaN(num) ? v : num;
     localStorage.setItem('qlc_week', String(S.week));
     applyRouter();
   };
 }
 
 function weekOptions() {
-  let h = '';
-  for (let i = 1; i <= (S.settings.weeks || 35); i++) {
-    h += `<option value="${i}" ${i === S.week ? 'selected' : ''}>Tuần ${i}</option>`;
+  const total = S.settings.weeks || 36;
+  const semLen = Math.floor(total / 2);
+  const sel = String(S.week);
+  let h = `<option value="0" ${sel === '0' ? 'selected' : ''}>Tuần 0 (Chuẩn bị)</option>`;
+  h += `<optgroup label="--- Hoc ky I ---">`;
+  for (let i = 1; i <= semLen; i++) {
+    h += `<option value="${i}" ${sel === String(i) ? 'selected' : ''}>Tuần ${i}</option>`;
+    if (i === Math.floor(semLen / 2)) h += `<option value="s1mid" ${sel === 's1mid' ? 'selected' : ''}>${WEEK_LABEL.s1mid} (0-${semLen / 2})</option>`;
   }
+  h += `<option value="s1end" ${sel === 's1end' ? 'selected' : ''}>${WEEK_LABEL.s1end} (0-${semLen})</option>`;
+  h += `</optgroup>`;
+  h += `<optgroup label="--- Hoc ky II ---">`;
+  for (let i = semLen + 1; i <= total; i++) {
+    h += `<option value="${i}" ${sel === String(i) ? 'selected' : ''}>Tuần ${i}</option>`;
+    if (i === semLen + Math.floor(semLen / 2)) h += `<option value="s2mid" ${sel === 's2mid' ? 'selected' : ''}>${WEEK_LABEL.s2mid} (${semLen + 1}-${semLen + Math.floor(semLen / 2)})</option>`;
+  }
+  h += `<option value="s2end" ${sel === 's2end' ? 'selected' : ''}>${WEEK_LABEL.s2end} (${semLen + 1}-${total})</option>`;
+  h += `</optgroup>`;
+  h += `<optgroup label="---">`;
+  h += `<option value="year" ${sel === 'year' ? 'selected' : ''}>${WEEK_LABEL.year} (0-${total})</option>`;
+  h += `</optgroup>`;
   return h;
 }
 

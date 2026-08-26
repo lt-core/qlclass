@@ -1,16 +1,20 @@
 import { api } from '../core/http.js';
-import { S } from '../core/state.js';
-import { esc, toast, confirmDlg, fmtDate } from '../core/ui.js';
+import { S, weekDisplay } from '../core/state.js';
+import { esc, toast, confirmDlg, fmtDate, openModal } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
+import { enhance } from '../core/controls.js';
 
 async function render(el) {
-  const [items, students] = await Promise.all([api('/labor?week=' + S.week), api('/students')]);
+  const [items, students] = await Promise.all([api('/labor?week=' + S.week), api('/students?all=1')]);
   const can = S.perms.manageLabor;
+  const isSummary = typeof S.week === 'string';
   el.innerHTML = `
-    <h2 class="page-title"><i class="fa-solid fa-broom"></i> Lao động — Tuần ${S.week}</h2>
+    <h2 class="page-title"><i class="fa-solid fa-broom"></i> Lao động — ${weekDisplay(S.week)}</h2>
     <p class="page-sub">Buổi lao động do lớp phó lao động quản lý, đánh giá mức A/B/C từng học sinh.</p>
-    ${can ? `<div style="margin-bottom:12px"><button class="btn" id="lb-add"><i class="fa-solid fa-plus"></i> Thêm buổi lao động</button></div>` : ''}
-    ${items.length ? items.map(l => `
+    ${can && !isSummary ? `<div style="margin-bottom:12px"><button class="btn" id="lb-add"><i class="fa-solid fa-plus"></i> Thêm buổi lao động</button></div>` : ''}
+    ${items.length ? items.map(l => {
+      const rated = students.filter(st => (l.ratings || {})[st.id]);
+      return `
       <div class="card">
         <div class="group-head">
           <h4>${esc(l.name)}</h4>
@@ -18,18 +22,15 @@ async function render(el) {
           <span class="tag gray">Buổi ${esc(l.session)}</span>
           ${l.time ? `<span class="tag amber"><i class="fa-regular fa-clock"></i> ${esc(l.time)}</span>` : ''}
           <span style="flex:1"></span>
-          ${can ? `<button class="btn sm secondary" data-lb-edit="${l.id}"><i class="fa-solid fa-pen"></i> Sửa</button><button class="btn sm red" data-lb-del="${l.id}">Xóa</button>` : ''}
+          ${can && !isSummary ? `<button class="btn sm secondary" data-lb-rate="${l.id}"><i class="fa-solid fa-star"></i> Đánh giá</button> <button class="btn sm secondary" data-lb-edit="${l.id}"><i class="fa-solid fa-pen"></i> Sửa</button> <button class="btn sm red" data-lb-del="${l.id}">Xóa</button>` : ''}
         </div>
-        <table class="tbl"><thead><tr><th>Học sinh</th><th>Đánh giá</th></tr></thead>
-        <tbody>${students.map(st => {
-          const lv = (l.ratings || {})[st.id] || '';
-          return `<tr><td>${esc(st.name)}</td><td>${
-            can
-              ? `<span class="rate-btns"><button class="${lv === 'A' ? 'on-A' : ''}" data-lid="${l.id}" data-sid="${st.id}" data-lv="A">A</button><button class="${lv === 'B' ? 'on-B' : ''}" data-lid="${l.id}" data-sid="${st.id}" data-lv="B">B</button><button class="${lv === 'C' ? 'on-C' : ''}" data-lid="${l.id}" data-sid="${st.id}" data-lv="C">C</button>${lv ? ` <span class="muted">(hiện tại: ${lv})</span>` : ''}</span>`
-              : (lv ? `<span class="tag ${lv === 'A' ? 'green' : lv === 'B' ? 'amber' : 'red'}">${lv}</span>` : '<span class="muted">—</span>')
-          }</td></tr>`;
-        }).join('')}</tbody></table>
-      </div>`).join('') : '<div class="card empty">Chưa có buổi lao động trong tuần này</div>'}`;
+        ${rated.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${rated.map(st => {
+          const lv = (l.ratings || {})[st.id];
+          return `<span class="tag ${lv === 'A' ? 'green' : lv === 'B' ? 'amber' : 'red'}">${esc(st.name)}: ${lv}</span>`;
+        }).join('')}</div>` : '<div class="muted" style="margin-top:8px">Chưa đánh giá</div>'}
+      </div>`;
+    }).join('') : '<div class="card empty">Chưa có buổi lao động trong tuần này</div>'}`;
+
   const addBtn = document.getElementById('lb-add');
   if (addBtn) addBtn.onclick = () => laborModal(null, () => render(el));
   el.querySelectorAll('[data-lb-del]').forEach(b => b.onclick = async () => {
@@ -40,14 +41,50 @@ async function render(el) {
   el.querySelectorAll('[data-lb-edit]').forEach(b => b.onclick = () => {
     laborModal(items.find(x => x.id === Number(b.dataset.lbEdit)), () => render(el));
   });
-  el.querySelectorAll('.rate-btns button').forEach(btn => btn.onclick = async () => {
-    const lv = btn.dataset.lv;
-    const cur = btn.classList.contains('on-' + lv);
-    try {
-      await api(`/labor/${btn.dataset.lid}/ratings`, { method: 'PUT', body: { ratings: { [btn.dataset.sid]: cur ? '' : lv } } });
-      render(el);
-    } catch (e) { toast(e.message, 'err'); }
+  el.querySelectorAll('[data-lb-rate]').forEach(b => {
+    b.onclick = () => rateModal(items.find(x => x.id === Number(b.dataset.lbRate)), students);
   });
+
+  function rateModal(item, students) {
+    const snapshot = { ...(item.ratings || {}) };
+    const m = openModal({
+      title: `Đánh giá — ${item.name}`,
+      wide: true,
+      body: `
+        <div class="lb-rate-grid">${students.map(st => {
+          const lv = snapshot[st.id] || '';
+          return `<div class="lb-rate-row"><span class="lb-rate-name">${esc(st.name)}</span>
+            <span class="rate-btns" data-rt-sid="${st.id}"><button class="${lv === 'A' ? 'on-A' : ''}" data-rt-lv="A">A</button><button class="${lv === 'B' ? 'on-B' : ''}" data-rt-lv="B">B</button><button class="${lv === 'C' ? 'on-C' : ''}" data-rt-lv="C">C</button></span></div>`;
+        }).join('')}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+          <button class="btn secondary" id="rt-cancel">Hủy</button>
+          <button class="btn" id="rt-save">Lưu đánh giá</button></div>`
+    });
+    enhance(m.el);
+    m.el.querySelectorAll('.rate-btns').forEach(group => {
+      const sid = group.dataset.rtSid;
+      group.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+          const lv = btn.dataset.rtLv;
+          const cur = snapshot[sid] === lv;
+          snapshot[sid] = cur ? '' : lv;
+          group.querySelectorAll('button').forEach(b => {
+            b.classList.remove('on-A', 'on-B', 'on-C');
+          });
+          if (!cur) btn.classList.add('on-' + lv);
+        };
+      });
+    });
+    m.el.querySelector('#rt-cancel').onclick = m.close;
+    m.el.querySelector('#rt-save').onclick = async () => {
+      try {
+        await api(`/labor/${item.id}/ratings`, { method: 'PUT', body: { ratings: snapshot } });
+        toast('Đã lưu đánh giá', 'ok');
+        m.close();
+        render(el);
+      } catch (e) { toast(e.message, 'err'); }
+    };
+  }
 
   function laborModal(item, done) {
     const m = openModal({

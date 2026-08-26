@@ -1,5 +1,5 @@
 import { api } from '../core/http.js';
-import { S } from '../core/state.js';
+import { S, weekDisplay } from '../core/state.js';
 import { esc, toast, confirmDlg, fmtDateTime, scoreBar } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { setBadge } from '../core/layout.js';
@@ -23,8 +23,8 @@ async function render(view) {
       <td class="muted">${esc(r.createdByName || '')}</td>
       <td>${r.status === 'approved' ? '<span class="tag green">Đã duyệt</span>' : r.status === 'rejected' ? '<span class="tag gray">Từ chối</span>' : '<span class="tag amber">Chờ duyệt</span>'}</td>
       <td class="actions">
-        ${(S.perms.approveRecords && r.status === 'pending') ? `<button class="btn sm green" data-approve="${r.id}">Duyệt</button> <button class="btn sm amber" data-reject="${r.id}">Từ chối</button>` : ''}
-        ${canDel(r) ? `<button class="btn sm red" data-delrec="${r.id}">Xóa</button>` : ''}
+        ${!isSummary && S.perms.approveRecords && r.status === 'pending' ? `<button class="btn sm green" data-approve="${r.id}">Duyệt</button> <button class="btn sm amber" data-reject="${r.id}">Từ chối</button>` : ''}
+        ${!isSummary && canDel(r) ? `<button class="btn sm red" data-delrec="${r.id}">Xóa</button>` : ''}
       </td>
     </tr>`;
 
@@ -34,19 +34,20 @@ async function render(view) {
   }
 
   const pending = recs.filter(r => r.status === 'pending');
+  const isSummary = typeof S.week === 'string';
 
   view.innerHTML = `
-    <h2 class="page-title">Thành tích & Vi phạm — Tuần ${S.week}</h2>
+    <h2 class="page-title">Thành tích & Vi phạm — ${weekDisplay(S.week)}</h2>
     <p class="page-sub">${S.perms.isTeacher ? 'Duyệt hoặc từ chối các ghi nhận tổ trưởng gửi.' : S.perms.addRecords ? 'Ghi nhận của tổ trưởng sẽ hiện với trạng thái Chờ duyệt cho đến khi giáo viên duyệt — duyệt rồi mới tính điểm.' : 'Bạn thấy được điểm của mình và các thành viên trong tổ.'}</p>
     <div style="margin-bottom:14px">
-      ${S.perms.addRecords ? `<button class="btn" id="btn-add-rec"><i class="fa-solid fa-plus"></i> Ghi nhận thành tích/vi phạm</button>` : ''}
+      ${S.perms.addRecords && !isSummary ? `<button class="btn" id="btn-add-rec"><i class="fa-solid fa-plus"></i> Ghi nhận thành tích/vi phạm</button>` : ''}
     </div>
     <div id="pending-zone"></div>
     <div class="card"><h3><i class="fa-solid fa-table-list"></i> Tất cả ghi nhận trong tuần (${recs.length})</h3>
       ${recs.length ? `<table class="tbl"><thead><tr><th>Thời gian</th><th>Học sinh</th><th>Loại</th><th>Ghi chú</th><th>Người gửi</th><th>Trạng thái</th><th></th></tr></thead>
       <tbody>${recs.map(row).join('')}</tbody></table>` : '<div class="empty">Chưa có ghi nhận nào trong tuần này</div>'}
     </div>
-    <div class="card"><h3><i class="fa-solid fa-trophy"></i> Bảng điểm tuần ${S.week}</h3>
+    <div class="card"><h3><i class="fa-solid fa-trophy"></i> Bảng điểm ${weekDisplay(S.week)}</h3>
       ${S.perms.isTeacher && sum.groups.length ? `<div class="grid3" style="margin-bottom:14px">${sum.groups.map(g => `
         <div class="card stat mb0" style="box-shadow:none;border:1px solid var(--border)">
           <div class="num" style="font-size:22px;color:${g.total >= (sum.baseStudentWeek || 10) ? 'var(--green)' : 'var(--red)'}">${g.total}</div>
@@ -59,8 +60,8 @@ async function render(view) {
     </div>`;
 
   const pz = document.getElementById('pending-zone');
-  if (S.perms.approveRecords && pending.length) renderPendingSection(pz, pending, refresh);
-  if (document.getElementById('btn-add-rec')) {
+  if (!isSummary && S.perms.approveRecords && pending.length) renderPendingSection(pz, pending, refresh);
+  if (!isSummary && document.getElementById('btn-add-rec')) {
     renderSubmitButton(document.getElementById('btn-add-rec'), refresh);
   }
 
