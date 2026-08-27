@@ -17,40 +17,56 @@ async function render(el) {
     <h2 class="page-title"><i class="fa-solid fa-masks-theater"></i> Văn thể — ${weekDisplay(S.week)}</h2>
     <p class="page-sub">Các lần văn nghệ, hoạt động văn thể do lớp phó văn thể quản lý.</p>
     ${can && !isSummary ? `<div style="margin-bottom:12px"><button class="btn" id="ct-add"><i class="fa-solid fa-plus"></i> Thêm hoạt động văn thể</button></div>` : ''}
-    ${items.length ? items.map(c => {
+    ${items.length ? items.map((c, idx) => {
       const rate = c.ratings || {};
-      const rated = students.filter(st => rate[st.id]);
       const attended = students.filter(st => ['A', 'B', 'C'].includes(rate[st.id])).length;
       const absent = students.filter(st => rate[st.id] === 'V').length;
       return `
-      <div class="card">
-        <div class="group-head">
-          <h4>${esc(c.name)}</h4>
-          <span class="tag blue">${fmtDate(c.date)}</span>
-          <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
-          ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
-          <span style="flex:1"></span>
-          ${can && !isSummary ? `<button class="btn sm secondary" data-ct-rate="${c.id}"><i class="fa-solid fa-star"></i> Đánh giá</button> <button class="btn sm secondary" data-ct-edit="${c.id}"><i class="fa-solid fa-pen"></i> Sửa</button><button class="btn sm red" data-ct-del="${c.id}">Xóa</button>` : ''}
+      <div class="card acc ${idx === 0 ? 'open' : ''}">
+        <div class="acc-head" data-acc>
+          <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
+          <div class="acc-title">
+            <h4>${esc(c.name)}</h4>
+            <div class="acc-meta">
+              <span class="tag blue">${fmtDate(c.date)}</span>
+              <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
+              ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
+            </div>
+          </div>
+          ${can && !isSummary ? `<span class="acc-actions">
+            <button class="btn sm secondary" data-ct-rate="${c.id}"><i class="fa-solid fa-star"></i> Đánh giá</button>
+            <button class="btn sm secondary" data-ct-edit="${c.id}"><i class="fa-solid fa-pen"></i> Sửa</button>
+            <button class="btn sm red" data-ct-del="${c.id}">Xóa</button></span>` : ''}
         </div>
-        ${c.desc ? `<div class="md-preview">${renderContent(c.desc)}</div>` : ''}
-        ${rated.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${rated.map(st => {
-          const lv = rate[st.id];
-          return `<span class="tag ${LV_TAG(lv)}">${esc(st.name)}: ${lv}</span>`;
-        }).join('')}</div>` : ''}
+        <div class="acc-body"><div class="acc-inner">
+          ${c.desc ? `<div class="md-preview" style="padding:12px 18px 0">${renderContent(c.desc)}</div>` : ''}
+          <table class="tbl lb-tbl"><thead><tr><th>STT</th><th>Học sinh</th><th>Xếp loại</th></tr></thead><tbody>${students.map((st, i) => {
+            const lv = rate[st.id];
+            return `<tr><td>${i + 1}</td><td>${esc(st.name)}</td><td>${lv ? `<span class="tag ${LV_TAG(lv)}">${lv}</span>` : '<span class="muted">—</span>'}</td></tr>`;
+          }).join('')}</tbody></table>
+        </div></div>
       </div>`;
     }).join('') : '<div class="card empty">Chưa có hoạt động văn thể trong tuần này</div>'}`;
   const addBtn = document.getElementById('ct-add');
   if (addBtn) addBtn.onclick = () => cultureModal(null, () => render(el));
-  el.querySelectorAll('[data-ct-del]').forEach(b => b.onclick = async () => {
+  el.querySelectorAll('[data-acc]').forEach(h => {
+    h.onclick = () => h.closest('.card').classList.toggle('open');
+  });
+  el.querySelectorAll('[data-ct-del]').forEach(b => b.onclick = async (e) => {
+    e.stopPropagation();
     if (await confirmDlg('Xóa hoạt động này?')) {
       try { await api('/culture/' + b.dataset.ctDel, { method: 'DELETE' }); toast('Đã xóa', 'ok'); render(el); } catch (e) { toast(e.message, 'err'); }
     }
   });
-  el.querySelectorAll('[data-ct-edit]').forEach(b => b.onclick = () => {
+  el.querySelectorAll('[data-ct-edit]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
     cultureModal(items.find(x => x.id === Number(b.dataset.ctEdit)), () => render(el));
   });
   el.querySelectorAll('[data-ct-rate]').forEach(b => {
-    b.onclick = () => rateModal(items.find(x => x.id === Number(b.dataset.ctRate)), students);
+    b.onclick = (e) => {
+      e.stopPropagation();
+      rateModal(items.find(x => x.id === Number(b.dataset.ctRate)), students);
+    };
   });
 
   function rateModal(item, students) {

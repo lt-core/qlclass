@@ -16,42 +16,58 @@ async function render(el) {
     <h2 class="page-title"><i class="fa-solid fa-broom"></i> Lao động — ${weekDisplay(S.week)}</h2>
     <p class="page-sub">Buổi lao động do lớp phó lao động quản lý, đánh giá mức A/B/C/V (V = vắng).</p>
     ${can && !isSummary ? `<div style="margin-bottom:12px"><button class="btn" id="lb-add"><i class="fa-solid fa-plus"></i> Thêm buổi lao động</button></div>` : ''}
-    ${items.length ? items.map(l => {
+    ${items.length ? items.map((l, idx) => {
       const rate = l.ratings || {};
-      const rated = students.filter(st => rate[st.id]);
       const attended = students.filter(st => ['A', 'B', 'C'].includes(rate[st.id])).length;
       const absent = students.filter(st => rate[st.id] === 'V').length;
       return `
-      <div class="card">
-        <div class="group-head">
-          <h4>${esc(l.name)}</h4>
-          <span class="tag blue">${fmtDate(l.date)}</span>
-          <span class="tag gray">Buổi ${esc(l.session)}</span>
-          ${l.time ? `<span class="tag amber"><i class="fa-regular fa-clock"></i> ${esc(l.time)}</span>` : ''}
-          <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
-          ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
-          <span style="flex:1"></span>
-          ${can && !isSummary ? `<button class="btn sm secondary" data-lb-rate="${l.id}"><i class="fa-solid fa-star"></i> Đánh giá</button> <button class="btn sm secondary" data-lb-edit="${l.id}"><i class="fa-solid fa-pen"></i> Sửa</button> <button class="btn sm red" data-lb-del="${l.id}">Xóa</button>` : ''}
+      <div class="card acc ${idx === 0 ? 'open' : ''}">
+        <div class="acc-head" data-acc>
+          <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
+          <div class="acc-title">
+            <h4>${esc(l.name)}</h4>
+            <div class="acc-meta">
+              <span class="tag blue">${fmtDate(l.date)}</span>
+              <span class="tag gray">Buổi ${esc(l.session)}</span>
+              ${l.time ? `<span class="tag amber"><i class="fa-regular fa-clock"></i> ${esc(l.time)}</span>` : ''}
+              <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
+              ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
+            </div>
+          </div>
+          ${can && !isSummary ? `<span class="acc-actions">
+            <button class="btn sm secondary" data-lb-rate="${l.id}"><i class="fa-solid fa-star"></i> Đánh giá</button>
+            <button class="btn sm secondary" data-lb-edit="${l.id}"><i class="fa-solid fa-pen"></i> Sửa</button>
+            <button class="btn sm red" data-lb-del="${l.id}">Xóa</button></span>` : ''}
         </div>
-        ${rated.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${rated.map(st => {
-          const lv = rate[st.id];
-          return `<span class="tag ${LV_TAG(lv)}">${esc(st.name)}: ${lv}</span>`;
-        }).join('')}</div>` : '<div class="muted" style="margin-top:8px">Chưa đánh giá</div>'}
+        <div class="acc-body"><div class="acc-inner">
+          <table class="tbl lb-tbl"><thead><tr><th>STT</th><th>Học sinh</th><th>Xếp loại</th></tr></thead><tbody>${students.map((st, i) => {
+            const lv = rate[st.id];
+            return `<tr><td>${i + 1}</td><td>${esc(st.name)}</td><td>${lv ? `<span class="tag ${LV_TAG(lv)}">${lv}</span>` : '<span class="muted">—</span>'}</td></tr>`;
+          }).join('')}</tbody></table>
+        </div></div>
       </div>`;
     }).join('') : '<div class="card empty">Chưa có buổi lao động trong tuần này</div>'}`;
 
   const addBtn = document.getElementById('lb-add');
   if (addBtn) addBtn.onclick = () => laborModal(null, () => render(el));
-  el.querySelectorAll('[data-lb-del]').forEach(b => b.onclick = async () => {
+  el.querySelectorAll('[data-acc]').forEach(h => {
+    h.onclick = () => h.closest('.card').classList.toggle('open');
+  });
+  el.querySelectorAll('[data-lb-del]').forEach(b => b.onclick = async (e) => {
+    e.stopPropagation();
     if (await confirmDlg('Xóa buổi lao động này?')) {
       try { await api('/labor/' + b.dataset.lbDel, { method: 'DELETE' }); toast('Đã xóa', 'ok'); render(el); } catch (e) { toast(e.message, 'err'); }
     }
   });
-  el.querySelectorAll('[data-lb-edit]').forEach(b => b.onclick = () => {
+  el.querySelectorAll('[data-lb-edit]').forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
     laborModal(items.find(x => x.id === Number(b.dataset.lbEdit)), () => render(el));
   });
   el.querySelectorAll('[data-lb-rate]').forEach(b => {
-    b.onclick = () => rateModal(items.find(x => x.id === Number(b.dataset.lbRate)), students);
+    b.onclick = (e) => {
+      e.stopPropagation();
+      rateModal(items.find(x => x.id === Number(b.dataset.lbRate)), students);
+    };
   });
 
   function rateModal(item, students) {
