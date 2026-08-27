@@ -141,8 +141,10 @@ export function setBadge(routeName, n) {
 
 async function fetchAnns() {
   try {
-    const { api } = await import('./http.js');
-    return await api('/announcements');
+    const res = await fetch('/api/announcements');
+    const data = await res.json();
+    if (!res.ok) throw new Error((data && data.error) || res.status);
+    return data;
   } catch (_) { return []; }
 }
 
@@ -181,6 +183,7 @@ export function markAnnSeen() {
 
 async function openBellPop() {
   const pop = document.getElementById('bell-pop');
+  pop.innerHTML = '<div class="bell-head"><b><i class="fa-regular fa-bell"></i> Thông báo</b></div><div class="bell-empty"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải...</div>';
   const list = await refreshNotifs();
   pop.innerHTML = `
     <div class="bell-head"><b><i class="fa-regular fa-bell"></i> Thông báo</b>${list.length ? `<span class="bell-total">${list.length} thông báo</span>` : ''}</div>
