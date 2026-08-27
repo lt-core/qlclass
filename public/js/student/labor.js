@@ -24,15 +24,13 @@ async function render(el) {
       <div class="card acc">
         <div class="acc-head" data-acc>
           <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
-          <div class="acc-title">
-            <h4>${esc(l.name)}</h4>
-            <div class="acc-meta">
-              <span class="tag blue">${fmtDate(l.date)}</span>
-              <span class="tag gray">Buổi ${esc(l.session)}</span>
-              ${l.time ? `<span class="tag amber"><i class="fa-regular fa-clock"></i> ${esc(l.time)}</span>` : ''}
-              <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
-              ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
-            </div>
+          <div class="acc-title"><h4>${esc(l.name)}</h4></div>
+          <div class="acc-meta">
+            <span class="tag blue">${fmtDate(l.date)}</span>
+            <span class="tag gray">Buổi ${esc(l.session)}</span>
+            ${l.time ? `<span class="tag amber"><i class="fa-regular fa-clock"></i> ${esc(l.time)}</span>` : ''}
+            <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
+            ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
           </div>
           ${can && !isSummary ? `<span class="acc-actions">
             <button class="btn sm secondary" data-lb-rate="${l.id}"><i class="fa-solid fa-star"></i> Đánh giá</button>

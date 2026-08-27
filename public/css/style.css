@@ -294,7 +294,7 @@ p.page-sub { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
 .acc.open .chev { transform: rotate(90deg); color: var(--primary); }
 .acc-title { min-width: 0; }
 .acc-title h4 { margin: 0; font-size: 15px; line-height: 1.3; }
-.acc-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+.acc-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 0; }
 .acc-actions { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
 .acc .acc-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .22s ease; }
 .acc .acc-inner { overflow: hidden; min-height: 0; }
@@ -1038,6 +1038,33 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
     justify-content: flex-end;
     flex-wrap: wrap;
   }
+
+  /* Bảng xếp loại (lao động/văn hóa): giữ dạng bảng NGANG trên mobile */
+  table.tbl.lb-tbl { display: table; width: 100%; }
+  table.tbl.lb-tbl thead { display: table-header-group; }
+  table.tbl.lb-tbl tbody { display: table-row-group; }
+  table.tbl.lb-tbl tr { display: table-row; }
+  table.tbl.lb-tbl th, table.tbl.lb-tbl td {
+    display: table-cell;
+    border: none;
+    padding: 7px 10px;
+    text-align: left;
+    vertical-align: middle;
+  }
+  table.tbl.lb-tbl td:first-child, table.tbl.lb-tbl th:first-child {
+    display: table-cell;
+    text-align: center;
+    width: 48px;
+    font-weight: 400;
+    font-size: 13.5px;
+  }
+
+  /* Accordion head mobile: dòng 1 = icon + tiêu đề, dòng 2 = tags, dòng 3 = nút */
+  .acc-head { flex-wrap: wrap; padding: 12px 12px; gap: 10px; }
+  .acc-title { flex: 1; min-width: 0; }
+  .acc-meta { flex: 1 1 100%; gap: 5px; margin-top: 6px; }
+  .acc-meta .tag { font-size: 11.5px; }
+  .acc-actions { flex: 1 1 100%; margin-top: 6px; }
 
   .stat { padding: 12px 10px; }
   .stat .num { font-size: 23px; }
