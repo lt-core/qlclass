@@ -199,15 +199,15 @@ async function migrateFromDoc(c) {
   const cnt = await c.execute('SELECT count(*) AS n FROM labor');
   if (Number(cnt.rows[0].n) > 0) return;
   for (const l of (doc.labor || [])) {
-    await c.execute({ sql: 'INSERT INTO labor (id, name, date, session, time, ratings) VALUES (?,?,?,?,?,?)',
+    await c.execute({ sql: 'INSERT OR IGNORE INTO labor (id, name, date, session, time, ratings) VALUES (?,?,?,?,?,?)',
       args: [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {})] });
   }
   for (const cl of (doc.culture || [])) {
-    await c.execute({ sql: 'INSERT INTO culture (id, name, date, desc, ratings) VALUES (?,?,?,?,?)',
+    await c.execute({ sql: 'INSERT OR IGNORE INTO culture (id, name, date, desc, ratings) VALUES (?,?,?,?,?)',
       args: [cl.id, cl.name, cl.date, cl.desc || '', JSON.stringify(cl.ratings || {})] });
   }
   for (const rv of (doc.reviews || [])) {
-    await c.execute({ sql: 'INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at) VALUES (?,?,?,?,?,?)',
+    await c.execute({ sql: 'INSERT OR IGNORE INTO reviews (id, week, type, content, updated_by_name, updated_at) VALUES (?,?,?,?,?,?)',
       args: [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null] });
   }
   if (doc.labor && doc.labor.length) {
