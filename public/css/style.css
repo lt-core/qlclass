@@ -150,6 +150,40 @@ body {
 .upop-meta i { width: 17px; color: var(--primary); font-size: 12px; }
 .upop-sep { height: 1px; background: var(--border); margin: 13px -14px; }
 
+/* ---------- Bell notifications ---------- */
+.bell-wrap { position: relative; }
+.bell-ic { position: relative; display: inline-flex; padding: 2px 4px; color: var(--muted); }
+.bell-ic i { font-size: 16px; }
+#bell-btn:hover .bell-ic { color: var(--primary); }
+.bell-badge {
+  position: absolute; top: -6px; right: -7px;
+  background: #d13438; color: #fff;
+  font-size: 10px; font-weight: 700; line-height: 1;
+  min-width: 16px; height: 16px;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 4px; border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--card);
+}
+.bell-pop { width: 330px; max-width: 92vw; padding: 0; }
+.bell-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.bell-head b { font-size: 14px; }
+.bell-list { max-height: min(58vh, 380px); overflow-y: auto; }
+.bell-item {
+  display: block; width: 100%; text-align: left;
+  background: none; border: none; border-bottom: 1px solid var(--border);
+  padding: 9px 14px; cursor: pointer; font: inherit;
+}
+.bell-item:hover { background: #f4f8fd; }
+.bell-title { display: block; font-weight: 700; font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bell-snippet { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bell-time { display: block; font-size: 11px; color: #9aa0a8; margin-top: 3px; }
+.bell-empty { padding: 22px 14px; text-align: center; color: var(--muted); font-size: 13px; }
+.bell-foot { padding: 8px 14px; border-top: 1px solid var(--border); }
+.bell-foot button { width: 100%; }
+.bell-seen-btn { background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; padding: 2px 4px; white-space: nowrap; }
+.bell-seen-btn:hover { text-decoration: underline; }
+.bell-total { font-size: 12px; color: var(--muted); }
+
 /* ---------- Nav tabs ---------- */
 .nav {
   background: var(--card);
@@ -1059,6 +1093,8 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
     position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
   }
   .userbox { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+  .bell-wrap { flex-shrink: 0; }
+  .bell-pop { left: 50%; right: auto; margin-left: min(-165px, -46vw); }
   .nav-brand { display: flex; }
   .nav {
     position: fixed;

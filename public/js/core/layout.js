@@ -17,6 +17,12 @@ export function renderApp() {
       <div class="brand"><i class="fa-solid fa-graduation-cap"></i><span class="brand-name">QLClass</span><small>${esc(S.settings.className)} • KH ${esc(S.settings.schoolYear)}</small></div>
       <div class="spacer"></div>
       <div class="weekbox"><span>Tuần</span><select id="week-sel">${weekOptions()}</select></div>
+      <div class="udrop bell-wrap">
+        <button type="button" class="ubtn" id="bell-btn" title="Thông báo" aria-label="Thông báo">
+          <span class="bell-ic"><i class="fa-regular fa-bell"></i><span class="bell-badge" id="bell-badge" hidden></span></span>
+        </button>
+        <div class="upop bell-pop" id="bell-pop" hidden></div>
+      </div>
       <div class="userbox">
         <div class="uinfo"><b>${esc(S.me.name)}</b><span>${roleLabel}</span></div>
         <div class="udrop">
@@ -49,6 +55,13 @@ export function renderApp() {
   const ubtn = document.getElementById('ubtn');
   const upop = document.getElementById('upop');
   if (ubtn && upop) attachDropdown(ubtn, upop, ubtn.parentNode);
+  const bellBtn = document.getElementById('bell-btn');
+  const bellPop = document.getElementById('bell-pop');
+  if (bellBtn && bellPop) {
+    attachDropdown(bellBtn, bellPop, bellBtn.parentNode);
+    bellBtn.addEventListener('click', () => { if (!bellPop.hidden) openBellPop(); });
+  }
+  refreshNotifs();
   document.getElementById('btn-changepw').onclick = () => changePwModal();
   document.getElementById('btn-logout').onclick = async () => {
     const { api } = await import('./http.js');
@@ -124,6 +137,64 @@ function weekOptions() {
 export function setBadge(routeName, n) {
   const b = document.getElementById('badge-' + routeName);
   if (b) b.innerHTML = n > 0 ? ` <span class="badge">${n}</span>` : '';
+}
+
+async function fetchAnns() {
+  try {
+    const { api } = await import('./http.js');
+    return await api('/announcements');
+  } catch (_) { return []; }
+}
+
+function annSnippet(a) {
+  const txt = String(a.content || '').replace(/[#*_>`-]/g, ' ').replace(/\s+/g, ' ').trim();
+  return txt ? txt : (a.expiresAt ? 'Bấm để xem chi tiết' : 'Thông báo từ ban cán sự');
+}
+
+function annTimeAgo(iso) {
+  const t = new Date(iso).getTime();
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return 'Vừa xong';
+  if (s < 3600) return Math.floor(s / 60) + ' phút trước';
+  if (s < 86400) return Math.floor(s / 3600) + ' giờ trước';
+  if (s < 604800) return Math.floor(s / 86400) + ' ngày trước';
+  return new Date(iso).toLocaleDateString('vi-VN');
+}
+
+async function refreshNotifs() {
+  const list = await fetchAnns();
+  const n = list.length;
+  setBadge('announcements', n);
+  const badge = document.getElementById('bell-badge');
+  if (badge) {
+    badge.hidden = n === 0;
+    badge.textContent = n > 99 ? '99+' : String(n);
+  }
+  const bell = document.getElementById('bell-btn');
+  if (bell) bell.hidden = n === 0;
+  return list;
+}
+
+export function markAnnSeen() {
+  refreshNotifs();
+}
+
+async function openBellPop() {
+  const pop = document.getElementById('bell-pop');
+  const list = await refreshNotifs();
+  pop.innerHTML = `
+    <div class="bell-head"><b><i class="fa-regular fa-bell"></i> Thông báo</b>${list.length ? `<span class="bell-total">${list.length} thông báo</span>` : ''}</div>
+    <div class="bell-list">${list.length ? list.map(a => `
+      <button type="button" class="bell-item" data-ann="${a.id}">
+        <span class="bell-title">${esc(a.title)}</span>
+        <span class="bell-snippet">${esc(annSnippet(a))}</span>
+        <span class="bell-time">${esc(a.createdBy || '')}${a.createdBy ? ' • ' : ''}${annTimeAgo(a.createdAt)}</span>
+      </button>`).join('') : '<div class="bell-empty">Chưa có thông báo nào</div>'}</div>
+    <div class="bell-foot"><button class="btn sm secondary" id="bell-all" style="width:100%"><i class="fa-solid fa-bullhorn"></i> Xem tất cả thông báo</button></div>`;
+  const close = () => { const b = document.getElementById('bell-btn'); if (b && !document.getElementById('bell-pop').hidden) b.click(); };
+  const goAll = () => { close(); navigate('announcements'); };
+  pop.querySelectorAll('.bell-item').forEach(it => it.onclick = goAll);
+  pop.querySelector('#bell-all').onclick = goAll;
 }
 
 export function forceLogin() {

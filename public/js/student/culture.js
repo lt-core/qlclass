@@ -17,12 +17,12 @@ async function render(el) {
     <h2 class="page-title"><i class="fa-solid fa-masks-theater"></i> Văn thể — ${weekDisplay(S.week)}</h2>
     <p class="page-sub">Các lần văn nghệ, hoạt động văn thể do lớp phó văn thể quản lý.</p>
     ${can && !isSummary ? `<div style="margin-bottom:12px"><button class="btn" id="ct-add"><i class="fa-solid fa-plus"></i> Thêm hoạt động văn thể</button></div>` : ''}
-    ${items.length ? items.map((c, idx) => {
+    ${items.length ? items.map(c => {
       const rate = c.ratings || {};
       const attended = students.filter(st => ['A', 'B', 'C'].includes(rate[st.id])).length;
       const absent = students.filter(st => rate[st.id] === 'V').length;
       return `
-      <div class="card acc ${idx === 0 ? 'open' : ''}">
+      <div class="card acc">
         <div class="acc-head" data-acc>
           <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
           <div class="acc-title">

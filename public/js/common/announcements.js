@@ -3,9 +3,11 @@ import { S } from '../core/state.js';
 import { esc, renderContent, toast, confirmDlg } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { openAnModal } from '../student/announcements-manage.js';
+import { markAnnSeen } from '../core/layout.js';
 
 async function render(view) {
   const list = await api(S.perms.manageAnnouncements ? '/announcements?all=1' : '/announcements');
+  markAnnSeen();
   const can = S.perms.manageAnnouncements;
   const audLabel = { all: '<i class="fa-solid fa-users"></i> Tất cả', students: '<i class="fa-solid fa-graduation-cap"></i> Học sinh', teachers: '<i class="fa-solid fa-chalkboard-user"></i> Giáo viên' };
   view.innerHTML = `

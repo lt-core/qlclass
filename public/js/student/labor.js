@@ -16,12 +16,12 @@ async function render(el) {
     <h2 class="page-title"><i class="fa-solid fa-broom"></i> Lao động — ${weekDisplay(S.week)}</h2>
     <p class="page-sub">Buổi lao động do lớp phó lao động quản lý, đánh giá mức A/B/C/V (V = vắng).</p>
     ${can && !isSummary ? `<div style="margin-bottom:12px"><button class="btn" id="lb-add"><i class="fa-solid fa-plus"></i> Thêm buổi lao động</button></div>` : ''}
-    ${items.length ? items.map((l, idx) => {
+    ${items.length ? items.map(l => {
       const rate = l.ratings || {};
       const attended = students.filter(st => ['A', 'B', 'C'].includes(rate[st.id])).length;
       const absent = students.filter(st => rate[st.id] === 'V').length;
       return `
-      <div class="card acc ${idx === 0 ? 'open' : ''}">
+      <div class="card acc">
         <div class="acc-head" data-acc>
           <span class="chev"><i class="fa-solid fa-chevron-right"></i></span>
           <div class="acc-title">
