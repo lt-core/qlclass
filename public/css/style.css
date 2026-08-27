@@ -1094,7 +1094,7 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
   }
   .userbox { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
   .bell-wrap { flex-shrink: 0; }
-  .bell-pop { left: 50%; right: auto; margin-left: min(-165px, -46vw); }
+  .bell-pop { right: auto; left: 50vw; margin-left: -min(165px, 46vw); }
   .nav-brand { display: flex; }
   .nav {
     position: fixed;
