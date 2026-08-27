@@ -52,7 +52,7 @@ async function render(view) {
         <div class="card stat mb0" style="box-shadow:none;border:1px solid var(--border)">
           <div class="num" style="font-size:22px;color:${g.total >= (sum.baseStudentWeek || 10) ? 'var(--green)' : 'var(--red)'}">${g.total}</div>
           <div class="lbl">${esc(g.name)} (${g.count} HS)</div></div>`).join('')}</div>` : ''}
-      <table class="tbl"><thead><tr><th>Học sinh</th><th>Thành tích</th><th>Vi phạm</th><th>Tổng</th><th style="width:180px"></th></tr></thead>
+      <table class="tbl score-tbl"><thead><tr><th>Học sinh</th><th>Thành tích</th><th>Vi phạm</th><th>Tổng</th><th style="width:180px"></th></tr></thead>
       <tbody>${sum.students.map(s => `<tr><td>${esc(s.name)}</td>
         <td style="color:var(--green)">+${s.achievement}</td><td style="color:var(--red)">-${s.violation}</td>
         <td><b>${s.total}</b></td>

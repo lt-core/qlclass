@@ -1059,6 +1059,43 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
     font-size: 13.5px;
   }
 
+  /* Bảng điểm (thành tích & vi phạm): tên + (+điểm) + (-điểm) trên 1 dòng, progress xuống dòng dưới */
+  table.tbl.score-tbl thead { display: none !important; }
+  table.tbl.score-tbl tbody tr {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center;
+    column-gap: 12px;
+    row-gap: 8px;
+    padding: 10px 0;
+  }
+  table.tbl.score-tbl tbody td {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: flex-start;
+    width: auto !important;
+    border: none;
+    padding: 0;
+    text-align: left;
+    font-size: 13.5px;
+  }
+  table.tbl.score-tbl tbody td:first-child {
+    flex: 1 1 auto !important;
+    min-width: 100px;
+    font-weight: 700;
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  table.tbl.score-tbl tbody td:nth-child(2),
+  table.tbl.score-tbl tbody td:nth-child(3),
+  table.tbl.score-tbl tbody td:nth-child(4) { white-space: nowrap; }
+  /* records có progress ở cột 5 → ẩn cột Tổng (cột 4) vì nhãn progress đã hiển thị tổng; dashboard (4 cột, không progress) thì giữ cột Tổng */
+  table.tbl.score-tbl tbody td:nth-child(4):not(:last-child) { display: none !important; }
+  table.tbl.score-tbl tbody td:nth-child(5) { flex: 1 1 100% !important; margin-top: 3px; }
+  table.tbl.score-tbl .score-bar-wrap { width: 100% !important; }
+
   /* Accordion head mobile: dòng 1 = icon + tiêu đề, dòng 2 = tags, dòng 3 = nút */
   .acc-head { flex-wrap: wrap; padding: 12px 12px; gap: 10px; }
   .acc-title { flex: 1; min-width: 0; }

@@ -50,7 +50,7 @@ app.get('/uploads/:name', async (req, res) => {
 
 if (!process.env.VERCEL) {
   app.use(express.static(path.join(__dirname, '..', 'public'), {
-    setHeaders: res => res.setHeader('Cache-Control', 'no-cache')
+    setHeaders: res => res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate')
   }));
 }
 

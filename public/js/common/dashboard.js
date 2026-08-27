@@ -48,7 +48,7 @@ async function render(view) {
           ${scoreBar(sum.baseStudentWeek, mine ? mine.achievement : 0, mine ? mine.violation : 0)}</div>
       </div>
       <div class="card"><h3>Tổ của tôi</h3>
-        <table class="tbl"><thead><tr><th>Học sinh</th><th>Thành tích</th><th>Vi phạm</th><th>Tổng</th></tr></thead>
+        <table class="tbl score-tbl"><thead><tr><th>Học sinh</th><th>Thành tích</th><th>Vi phạm</th><th>Tổng</th></tr></thead>
         <tbody>${sum.students.map(s => `<tr><td>${esc(s.name)}${s.id === mineId ? ' <span class="tag blue">Tôi</span>' : ''}</td>
           <td style="color:var(--green)">+${s.achievement}</td><td style="color:var(--red)">-${s.violation}</td>
           <td><b>${s.total}</b></td></tr>`).join('')}</tbody></table></div>`;
