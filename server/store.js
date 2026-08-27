@@ -32,7 +32,44 @@ async function client() {
   return dbClient;
 }
 
+async function dbExecute(sql, args) {
+  const run = (c) => (args === undefined ? c.execute(sql) : c.execute({ sql, args }));
+  try {
+    const c = await client();
+    return await run(c);
+  } catch (firstErr) {
+    console.error('[store] DB err, reconnect & retry:', firstErr.message || firstErr);
+    try { if (dbClient) dbClient.close(); } catch (_) {}
+    dbClient = null;
+    dbClientAt = 0;
+    const c2 = await client();
+    return await run(c2);
+  }
+}
+
 const DOC_KEY = 'qlclass_doc';
+
+function summaryRanges() {
+  const weeks = (state && state.settings && state.settings.weeks) || 36;
+  const sem = Math.floor(weeks / 2);
+  const mid = Math.floor(sem / 2);
+  return {
+    s1mid: [0, mid],
+    s1end: [0, sem],
+    s2mid: [sem + 1, sem + mid],
+    s2end: [sem + 1, weeks],
+    year: [0, weeks]
+  };
+}
+
+function weekInRange(recordWeek, weekParam) {
+  if (!weekParam) return true;
+  const w = Number(weekParam);
+  if (!isNaN(w)) return recordWeek === w;
+  const range = summaryRanges()[weekParam];
+  if (!range) return true;
+  return recordWeek >= range[0] && recordWeek <= range[1];
+}
 
 function ensureReady(defaults) {
   if (readyPromise) return readyPromise;
@@ -90,6 +127,8 @@ async function initDbBackend(defaults) {
     token TEXT PRIMARY KEY, uid INTEGER NOT NULL,
     created_at TEXT DEFAULT (datetime('now'))
   )`);
+  await ensureSqlTables(c);
+  await migrateFromDoc(c);
   const rs = await c.execute({ sql: 'SELECT v FROM kv WHERE k = ?', args: [DOC_KEY] });
   if (rs.rows.length && rs.rows[0].v) {
     try {
@@ -121,17 +160,199 @@ async function initDbBackend(defaults) {
 }
 
 async function flushDoc() {
-  const c = await client();
   const payload = JSON.stringify(state);
   try {
-    await c.execute({
-      sql: `INSERT INTO kv (k, v) VALUES (?, ?)
+    await dbExecute(
+      `INSERT INTO kv (k, v) VALUES (?, ?)
             ON CONFLICT(k) DO UPDATE SET v = excluded.v`,
-      args: [DOC_KEY, payload]
-    });
+      [DOC_KEY, payload]
+    );
   } catch (err) {
     console.error('[store] flushDoc FAILED:', err.message || err);
     throw err;
+  }
+}
+
+/* ---------- SQL CRUD for labor / culture / reviews ---------- */
+/* These bypass the single-document to avoid Vercel race conditions */
+
+async function ensureSqlTables(c) {
+  await c.execute(`CREATE TABLE IF NOT EXISTS labor (
+    id INTEGER PRIMARY KEY, name TEXT NOT NULL, date TEXT NOT NULL,
+    session TEXT DEFAULT 'Sáng', time TEXT DEFAULT '', ratings TEXT DEFAULT '{}'
+  )`);
+  await c.execute(`CREATE TABLE IF NOT EXISTS culture (
+    id INTEGER PRIMARY KEY, name TEXT NOT NULL, date TEXT NOT NULL,
+    desc TEXT DEFAULT '', ratings TEXT DEFAULT '{}'
+  )`);
+  await c.execute(`CREATE TABLE IF NOT EXISTS reviews (
+    id INTEGER PRIMARY KEY, week INTEGER NOT NULL, type TEXT NOT NULL,
+    content TEXT DEFAULT '', updated_by_name TEXT DEFAULT '', updated_at TEXT
+  )`);
+}
+
+async function migrateFromDoc(c) {
+  const rs = await c.execute({ sql: 'SELECT v FROM kv WHERE k = ?', args: [DOC_KEY] });
+  if (!rs.rows.length || !rs.rows[0].v) return;
+  let doc;
+  try { doc = JSON.parse(String(rs.rows[0].v)); } catch (_) { return; }
+  const cnt = await c.execute('SELECT count(*) AS n FROM labor');
+  if (Number(cnt.rows[0].n) > 0) return;
+  for (const l of (doc.labor || [])) {
+    await c.execute({ sql: 'INSERT INTO labor (id, name, date, session, time, ratings) VALUES (?,?,?,?,?,?)',
+      args: [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {})] });
+  }
+  for (const cl of (doc.culture || [])) {
+    await c.execute({ sql: 'INSERT INTO culture (id, name, date, desc, ratings) VALUES (?,?,?,?,?)',
+      args: [cl.id, cl.name, cl.date, cl.desc || '', JSON.stringify(cl.ratings || {})] });
+  }
+  for (const rv of (doc.reviews || [])) {
+    await c.execute({ sql: 'INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at) VALUES (?,?,?,?,?,?)',
+      args: [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null] });
+  }
+  if (doc.labor && doc.labor.length) {
+    doc.labor = [];
+    await c.execute({ sql: 'UPDATE kv SET v = ? WHERE k = ?', args: [JSON.stringify(doc), DOC_KEY] });
+  }
+  console.log('[store] Da chuyen labor/culture/reviews sang bang SQL rieng');
+}
+
+function useSql() { return USE_DB; }
+
+async function laborList() {
+  if (!USE_DB) return get().labor;
+  const rs = await dbExecute('SELECT * FROM labor');
+  return rs.rows.map(r => ({ id: Number(r.id), name: String(r.name), date: String(r.date), session: String(r.session), time: String(r.time), ratings: JSON.parse(String(r.ratings || '{}')) }));
+}
+async function laborGet(id) {
+  if (!USE_DB) return get().labor.find(x => x.id === Number(id));
+  const rs = await dbExecute('SELECT * FROM labor WHERE id = ?', [Number(id)]);
+  if (!rs.rows.length) return null;
+  const r = rs.rows[0];
+  return { id: Number(r.id), name: String(r.name), date: String(r.date), session: String(r.session), time: String(r.time), ratings: JSON.parse(String(r.ratings || '{}')) };
+}
+async function laborInsert(l) {
+  if (!USE_DB) { get().labor.push(l); scheduleSave(); return l; }
+  await dbExecute('INSERT INTO labor (id, name, date, session, time, ratings) VALUES (?,?,?,?,?,?)',
+    [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {})]);
+  return l;
+}
+async function laborUpdate(id, fields) {
+  if (!USE_DB) {
+    const l = get().labor.find(x => x.id === Number(id));
+    if (l) Object.assign(l, fields);
+    scheduleSave();
+    return l;
+  }
+  const cur = await laborGet(id);
+  if (!cur) return null;
+  const merged = Object.assign(cur, fields);
+  await dbExecute('UPDATE labor SET name=?, date=?, session=?, time=?, ratings=? WHERE id=?',
+    [merged.name, merged.date, merged.session, merged.time, JSON.stringify(merged.ratings || {}), Number(id)]);
+  return merged;
+}
+async function laborDelete(id) {
+  if (!USE_DB) { get().labor = get().labor.filter(x => x.id !== Number(id)); scheduleSave(); return; }
+  await dbExecute('DELETE FROM labor WHERE id = ?', [Number(id)]);
+}
+
+async function cultureList() {
+  if (!USE_DB) return get().culture;
+  const rs = await dbExecute('SELECT * FROM culture');
+  return rs.rows.map(r => ({ id: Number(r.id), name: String(r.name), date: String(r.date), desc: String(r.desc || ''), ratings: JSON.parse(String(r.ratings || '{}')) }));
+}
+async function cultureGet(id) {
+  if (!USE_DB) return get().culture.find(x => x.id === Number(id));
+  const rs = await dbExecute('SELECT * FROM culture WHERE id = ?', [Number(id)]);
+  if (!rs.rows.length) return null;
+  const r = rs.rows[0];
+  return { id: Number(r.id), name: String(r.name), date: String(r.date), desc: String(r.desc || ''), ratings: JSON.parse(String(r.ratings || '{}')) };
+}
+async function cultureInsert(c) {
+  if (!USE_DB) { get().culture.push(c); scheduleSave(); return c; }
+  await dbExecute('INSERT INTO culture (id, name, date, desc, ratings) VALUES (?,?,?,?,?)',
+    [c.id, c.name, c.date, c.desc || '', JSON.stringify(c.ratings || {})]);
+  return c;
+}
+async function cultureUpdate(id, fields) {
+  if (!USE_DB) {
+    const c = get().culture.find(x => x.id === Number(id));
+    if (c) Object.assign(c, fields);
+    scheduleSave();
+    return c;
+  }
+  const cur = await cultureGet(id);
+  if (!cur) return null;
+  const merged = Object.assign(cur, fields);
+  await dbExecute('UPDATE culture SET name=?, date=?, desc=?, ratings=? WHERE id=?',
+    [merged.name, merged.date, merged.desc, JSON.stringify(merged.ratings || {}), Number(id)]);
+  return merged;
+}
+async function cultureDelete(id) {
+  if (!USE_DB) { get().culture = get().culture.filter(x => x.id !== Number(id)); scheduleSave(); return; }
+  await dbExecute('DELETE FROM culture WHERE id = ?', [Number(id)]);
+}
+
+async function reviewsList(weekParam) {
+  if (!USE_DB) {
+    let list = get().reviews;
+    if (weekParam) list = list.filter(r => weekInRange(r.week, weekParam));
+    return list;
+  }
+  const rs = await dbExecute('SELECT * FROM reviews');
+  let list = rs.rows.map(r => ({ id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at }));
+  if (weekParam) list = list.filter(r => weekInRange(r.week, weekParam));
+  return list;
+}
+async function reviewsFind(week, type) {
+  if (!USE_DB) return get().reviews.find(x => x.week === week && x.type === type);
+  const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND type = ?', [week, type]);
+  if (!rs.rows.length) return null;
+  const r = rs.rows[0];
+  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at };
+}
+async function reviewsUpsert(rv) {
+  if (!USE_DB) {
+    const existing = get().reviews.find(x => x.week === rv.week && x.type === rv.type);
+    if (existing) { Object.assign(existing, rv); scheduleSave(); return existing; }
+    get().reviews.push(rv);
+    scheduleSave();
+    return rv;
+  }
+  const existing = await reviewsFind(rv.week, rv.type);
+  if (existing) {
+    await dbExecute('UPDATE reviews SET content=?, updated_by_name=?, updated_at=? WHERE id=?',
+      [rv.content || '', rv.updatedByName || '', rv.updatedAt || null, existing.id]);
+    return Object.assign(existing, rv);
+  }
+  await dbExecute('INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at) VALUES (?,?,?,?,?,?)',
+    [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null]);
+  return rv;
+}
+
+async function removeStudentRatings(studentId) {
+  const sid = String(studentId);
+  if (!USE_DB) {
+    get().labor.forEach(l => { if (l.ratings) delete l.ratings[sid]; });
+    get().culture.forEach(c => { if (c.ratings) delete c.ratings[sid]; });
+    scheduleSave();
+    return;
+  }
+  const lrs = await dbExecute('SELECT id, ratings FROM labor');
+  for (const r of lrs.rows) {
+    const ratings = JSON.parse(String(r.ratings || '{}'));
+    if (sid in ratings) {
+      delete ratings[sid];
+      await dbExecute('UPDATE labor SET ratings = ? WHERE id = ?', [JSON.stringify(ratings), Number(r.id)]);
+    }
+  }
+  const crs = await dbExecute('SELECT id, ratings FROM culture');
+  for (const r of crs.rows) {
+    const ratings = JSON.parse(String(r.ratings || '{}'));
+    if (sid in ratings) {
+      delete ratings[sid];
+      await dbExecute('UPDATE culture SET ratings = ? WHERE id = ?', [JSON.stringify(ratings), Number(r.id)]);
+    }
   }
 }
 
@@ -177,12 +398,11 @@ function nextId(collection) {
 
 async function putFile(name, mime, buf) {
   if (USE_DB) {
-    const c = await client();
-    await c.execute({
-      sql: `INSERT INTO files (name, mime, size, data) VALUES (?, ?, ?, ?)
+    await dbExecute(
+      `INSERT INTO files (name, mime, size, data) VALUES (?, ?, ?, ?)
             ON CONFLICT(name) DO UPDATE SET mime = excluded.mime, size = excluded.size, data = excluded.data`,
-      args: [name, mime, buf.length, buf]
-    });
+      [name, mime, buf.length, buf]
+    );
   } else {
     putFileOnDisk(name, buf);
   }
@@ -191,8 +411,7 @@ async function putFile(name, mime, buf) {
 async function getFile(name) {
   if (!/^[a-z0-9]+\.(png|jpg|gif|webp)$/i.test(name)) return null;
   if (USE_DB) {
-    const c = await client();
-    const rs = await c.execute({ sql: 'SELECT mime, data FROM files WHERE name = ?', args: [name] });
+    const rs = await dbExecute('SELECT mime, data FROM files WHERE name = ?', [name]);
     if (!rs.rows.length) return null;
     return { mime: String(rs.rows[0].mime), buf: Buffer.from(rs.rows[0].data) };
   }
@@ -212,8 +431,7 @@ async function setToken(token, uid) {
     dirty = true;
     return;
   }
-  const c = await client();
-  await c.execute({ sql: 'INSERT OR REPLACE INTO tokens (token, uid) VALUES (?, ?)', args: [token, Number(uid)] });
+  await dbExecute('INSERT OR REPLACE INTO tokens (token, uid) VALUES (?, ?)', [token, Number(uid)]);
 }
 
 async function delToken(token) {
@@ -222,8 +440,7 @@ async function delToken(token) {
     dirty = true;
     return;
   }
-  const c = await client();
-  await c.execute({ sql: 'DELETE FROM tokens WHERE token = ?', args: [token] });
+  await dbExecute('DELETE FROM tokens WHERE token = ?', [token]);
 }
 
 async function findUidByToken(token) {
@@ -232,8 +449,7 @@ async function findUidByToken(token) {
     const v = (state.tokens || {})[token];
     return v == null ? null : Number(v);
   }
-  const c = await client();
-  const rs = await c.execute({ sql: 'SELECT uid FROM tokens WHERE token = ?', args: [token] });
+  const rs = await dbExecute('SELECT uid FROM tokens WHERE token = ?', [token]);
   return rs.rows.length ? Number(rs.rows[0].uid) : null;
 }
 
@@ -244,8 +460,7 @@ async function delTokensOfUser(uid) {
     dirty = true;
     return;
   }
-  const c = await client();
-  await c.execute({ sql: 'DELETE FROM tokens WHERE uid = ?', args: [Number(uid)] });
+  await dbExecute('DELETE FROM tokens WHERE uid = ?', [Number(uid)]);
 }
 
 if (!USE_DB) {
@@ -256,5 +471,9 @@ process.on('SIGINT', () => process.exit(0));
 module.exports = {
   ensureReady, get, scheduleSave, persistNow, persistIfDirty, isDirty,
   nextId, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
+  useSql, weekInRange, summaryRanges,
+  laborList, laborGet, laborInsert, laborUpdate, laborDelete,
+  cultureList, cultureGet, cultureInsert, cultureUpdate, cultureDelete,
+  reviewsList, reviewsFind, reviewsUpsert, removeStudentRatings,
   get useDb() { return USE_DB; }
 };

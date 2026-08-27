@@ -13,9 +13,10 @@ export function renderApp() {
   const links = navLinks();
   document.getElementById('app').innerHTML = `
     <div class="topbar">
-      <div class="brand"><i class="fa-solid fa-graduation-cap"></i> QLClass<small>${esc(S.settings.className)} • KH ${esc(S.settings.schoolYear)}</small></div>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+      <div class="brand"><i class="fa-solid fa-graduation-cap"></i><span class="brand-name">QLClass</span><small>${esc(S.settings.className)} • KH ${esc(S.settings.schoolYear)}</small></div>
       <div class="spacer"></div>
-      <div class="weekbox"><span>Tuần</span> <select id="week-sel">${weekOptions()}</select></div>
+      <div class="weekbox"><span>Tuần</span><select id="week-sel">${weekOptions()}</select></div>
       <div class="userbox">
         <div class="uinfo"><b>${esc(S.me.name)}</b><span>${roleLabel}</span></div>
         <div class="udrop">
@@ -40,6 +41,7 @@ export function renderApp() {
       </div>
     </div>
     <nav class="nav">
+      <div class="nav-brand"><i class="fa-solid fa-graduation-cap"></i><b style="line-height:1.25"><span style="display:block">QLClass</span><small>${esc(S.settings.className)} • KH ${esc(S.settings.schoolYear)}</small></b></div>
       ${links.map(([name, def]) => `<a href="#/${name}" data-route="${name}"><i class="fa-solid ${def.icon}"></i> ${def.title}<span id="badge-${name}"></span></a>`).join('')}
     </nav>
     <main id="view"></main>`;
@@ -60,6 +62,38 @@ export function renderApp() {
     localStorage.setItem('qlc_week', String(S.week));
     applyRouter();
   };
+  wireNavDrawer();
+}
+
+function wireNavDrawer() {
+  const nav = document.querySelector('.nav');
+  const toggle = document.getElementById('nav-toggle');
+  if (!nav || !toggle) return;
+  let backdrop = document.getElementById('nav-backdrop');
+  if (!backdrop) {
+    backdrop = document.createElement('div');
+    backdrop.className = 'nav-backdrop';
+    backdrop.id = 'nav-backdrop';
+    backdrop.addEventListener('click', closeNavDrawer);
+    document.body.appendChild(backdrop);
+  }
+  toggle.onclick = () => {
+    const open = document.body.classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', String(open));
+  };
+  nav.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNavDrawer));
+  if (!document.body.dataset.navKeys) {
+    document.body.dataset.navKeys = '1';
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeNavDrawer();
+    });
+  }
+}
+
+function closeNavDrawer() {
+  document.body.classList.remove('nav-open');
+  const toggle = document.getElementById('nav-toggle');
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
 function weekOptions() {
@@ -70,7 +104,7 @@ function weekOptions() {
   h += `<optgroup label="--- Hoc ky I ---">`;
   for (let i = 1; i <= semLen; i++) {
     h += `<option value="${i}" ${sel === String(i) ? 'selected' : ''}>Tuần ${i}</option>`;
-    if (i === Math.floor(semLen / 2)) h += `<option value="s1mid" ${sel === 's1mid' ? 'selected' : ''}>${WEEK_LABEL.s1mid} (0-${semLen / 2})</option>`;
+    if (i === Math.floor(semLen / 2)) h += `<option value="s1mid" ${sel === 's1mid' ? 'selected' : ''}>${WEEK_LABEL.s1mid} (0-${Math.floor(semLen / 2)})</option>`;
   }
   h += `<option value="s1end" ${sel === 's1end' ? 'selected' : ''}>${WEEK_LABEL.s1end} (0-${semLen})</option>`;
   h += `</optgroup>`;

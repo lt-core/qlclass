@@ -6,7 +6,7 @@ const dbu = require('./db');
 const router = express.Router();
 const COOKIE = 'qlc_token';
 const POSITIONS = ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy', 'to_truong', 'bi_thu', 'pho_bi_thu', 'uy_vien'];
-const SUMMARY_WEEK_RANGES = { s1mid: [0, 9], s1end: [0, 18], s2mid: [19, 27], s2end: [19, 36], year: [0, 36] };
+const weekInRange = store.weekInRange;
 
 function getDb() { return store.get(); }
 
@@ -68,15 +68,6 @@ function weekOf(dateStr) {
   let w = Math.floor((d - start) / (7 * 86400000)) + 1;
   if (w < 1) w = 0;
   return Math.min(w, s.weeks || 36);
-}
-
-function weekInRange(recordWeek, weekParam) {
-  if (!weekParam) return true;
-  const w = Number(weekParam);
-  if (!isNaN(w)) return recordWeek === w;
-  const range = SUMMARY_WEEK_RANGES[weekParam];
-  if (!range) return true;
-  return recordWeek >= range[0] && recordWeek <= range[1];
 }
 
 function currentWeek() { return weekOf(new Date().toISOString().slice(0, 10)); }
@@ -408,14 +399,13 @@ router.put('/students/:id/seat', requireAuth, requireTeacher, (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete('/students/:id', requireAuth, requireTeacher, (req, res) => {
+router.delete('/students/:id', requireAuth, requireTeacher, async (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   db.students = db.students.filter(s => s.id !== id);
   db.users = db.users.filter(u => u.studentId !== id);
   db.records = db.records.filter(r => r.studentId !== id);
-  db.labor.forEach(l => { if (l.ratings) delete l.ratings[id]; });
-  db.culture.forEach(c => { if (c.ratings) delete c.ratings[id]; });
+  await store.removeStudentRatings(id);
   store.scheduleSave();
   res.json({ ok: true });
 });
@@ -508,48 +498,44 @@ router.delete('/records/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-router.get('/reviews', requireAuth, (req, res) => {
-  const db = getDb();
-  let list = db.reviews;
-  if (req.query.week) list = list.filter(r => weekInRange(r.week, req.query.week));
+router.get('/reviews', requireAuth, async (req, res) => {
+  const list = await store.reviewsList(req.query.week || null);
   res.json(list);
 });
 
-router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), (req, res) => {
-  const db = getDb();
+router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), async (req, res) => {
   const { week, type, content } = req.body || {};
   if (!['class', 'study'].includes(type)) return res.status(400).json({ error: 'Loại nhận xét không hợp lệ' });
   const w = Number(week) || currentWeek();
-  let rv = db.reviews.find(x => x.week === w && x.type === type);
-  if (!rv) {
-    rv = { id: store.nextId('reviews'), week: w, type, content: '', updatedByName: '', updatedAt: null };
-    db.reviews.push(rv);
-  }
-  rv.content = String(content || '');
-  rv.updatedByName = req.user.name;
-  rv.updatedAt = new Date().toISOString();
-  store.scheduleSave();
-  res.json(rv);
+  const rv = {
+    id: store.nextId('reviews'),
+    week: w,
+    type,
+    content: String(content || ''),
+    updatedByName: req.user.name,
+    updatedAt: new Date().toISOString()
+  };
+  const saved = await store.reviewsUpsert(rv);
+  res.json(saved);
 });
 
-router.get('/labor', requireAuth, (req, res) => {
-  const db = getDb();
-  let list = db.labor.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+router.get('/labor', requireAuth, async (req, res) => {
+  let list = await store.laborList();
+  list.sort((a, b) => (a.date < b.date ? 1 : -1));
   if (req.query.week) {
     const wq = req.query.week;
     const wn = Number(wq);
     if (!isNaN(wn)) {
       list = list.filter(l => weekOf(l.date) === wn);
     } else {
-      const range = SUMMARY_WEEK_RANGES[wq];
+      const range = store.summaryRanges()[wq];
       if (range) list = list.filter(l => { const w = weekOf(l.date); return w >= range[0] && w <= range[1]; });
     }
   }
   res.json(list);
 });
 
-router.post('/labor', requireAuth, requirePos(['pho_lao_dong']), (req, res) => {
-  const db = getDb();
+router.post('/labor', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên buổi lao động' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
@@ -561,106 +547,95 @@ router.post('/labor', requireAuth, requirePos(['pho_lao_dong']), (req, res) => {
     time: String(b.time || ''),
     ratings: {}
   };
-  db.labor.push(l);
-  store.scheduleSave();
+  await store.laborInsert(l);
   res.json(l);
 });
 
-router.put('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), (req, res) => {
-  const db = getDb();
-  const l = db.labor.find(x => x.id === Number(req.params.id));
-  if (!l) return res.status(404).json({ error: 'Không tìm thấy buổi lao động' });
+router.put('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
   const b = req.body || {};
-  if (b.name !== undefined && String(b.name).trim()) l.name = String(b.name).trim();
-  if (b.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.date)) l.date = b.date;
-  if (b.session !== undefined && ['Sáng', 'Chiều', 'Tối'].includes(b.session)) l.session = b.session;
-  if (b.time !== undefined) l.time = String(b.time);
-  store.scheduleSave();
+  const fields = {};
+  if (b.name !== undefined && String(b.name).trim()) fields.name = String(b.name).trim();
+  if (b.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.date)) fields.date = b.date;
+  if (b.session !== undefined && ['Sáng', 'Chiều', 'Tối'].includes(b.session)) fields.session = b.session;
+  if (b.time !== undefined) fields.time = String(b.time);
+  const l = await store.laborUpdate(req.params.id, fields);
+  if (!l) return res.status(404).json({ error: 'Không tìm thấy buổi lao động' });
   res.json(l);
 });
 
-router.put('/labor/:id/ratings', requireAuth, requirePos(['pho_lao_dong']), (req, res) => {
-  const db = getDb();
-  const l = db.labor.find(x => x.id === Number(req.params.id));
+router.put('/labor/:id/ratings', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
+  const l = await store.laborGet(Number(req.params.id));
   if (!l) return res.status(404).json({ error: 'Không tìm thấy buổi lao động' });
   const { ratings } = req.body || {};
   l.ratings = l.ratings || {};
   Object.entries(ratings || {}).forEach(([sid, lv]) => {
-    if (['A', 'B', 'C', ''].includes(lv)) {
+    if (['A', 'B', 'C', 'V', ''].includes(lv)) {
       if (lv === '') delete l.ratings[sid];
       else l.ratings[sid] = lv;
     }
   });
-  store.scheduleSave();
-  res.json(l);
+  const updated = await store.laborUpdate(req.params.id, { ratings: l.ratings });
+  res.json(updated);
 });
 
-router.delete('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), (req, res) => {
-  const db = getDb();
-  db.labor = db.labor.filter(x => x.id !== Number(req.params.id));
-  store.scheduleSave();
+router.delete('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
+  await store.laborDelete(req.params.id);
   res.json({ ok: true });
 });
 
-router.get('/culture', requireAuth, (req, res) => {
-  const db = getDb();
-  let list = db.culture.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+router.get('/culture', requireAuth, async (req, res) => {
+  let list = await store.cultureList();
+  list.sort((a, b) => (a.date < b.date ? 1 : -1));
   if (req.query.week) {
     const wq = req.query.week;
     const wn = Number(wq);
     if (!isNaN(wn)) {
       list = list.filter(c => weekOf(c.date) === wn);
     } else {
-      const range = SUMMARY_WEEK_RANGES[wq];
+      const range = store.summaryRanges()[wq];
       if (range) list = list.filter(c => { const w = weekOf(c.date); return w >= range[0] && w <= range[1]; });
     }
   }
   res.json(list);
 });
 
-router.post('/culture', requireAuth, requirePos(['pho_van_the']), (req, res) => {
-  const db = getDb();
+router.post('/culture', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên hoạt động' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
   const c = { id: store.nextId('culture'), name: String(b.name).trim(), date: b.date, desc: String(b.desc || ''), ratings: {} };
-  db.culture.push(c);
-  store.scheduleSave();
+  await store.cultureInsert(c);
   res.json(c);
 });
 
-router.put('/culture/:id', requireAuth, requirePos(['pho_van_the']), (req, res) => {
-  const db = getDb();
-  const c = db.culture.find(x => x.id === Number(req.params.id));
-  if (!c) return res.status(404).json({ error: 'Không tìm thấy hoạt động' });
+router.put('/culture/:id', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
   const b = req.body || {};
-  if (b.name !== undefined && String(b.name).trim()) c.name = String(b.name).trim();
-  if (b.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.date)) c.date = b.date;
-  if (b.desc !== undefined) c.desc = String(b.desc);
-  store.scheduleSave();
+  const fields = {};
+  if (b.name !== undefined && String(b.name).trim()) fields.name = String(b.name).trim();
+  if (b.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.date)) fields.date = b.date;
+  if (b.desc !== undefined) fields.desc = String(b.desc);
+  const c = await store.cultureUpdate(req.params.id, fields);
+  if (!c) return res.status(404).json({ error: 'Không tìm thấy hoạt động' });
   res.json(c);
 });
 
-router.put('/culture/:id/ratings', requireAuth, requirePos(['pho_van_the']), (req, res) => {
-  const db = getDb();
-  const c = db.culture.find(x => x.id === Number(req.params.id));
+router.put('/culture/:id/ratings', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
+  const c = await store.cultureGet(Number(req.params.id));
   if (!c) return res.status(404).json({ error: 'Không tìm thấy hoạt động' });
   const { ratings } = req.body || {};
   c.ratings = c.ratings || {};
   Object.entries(ratings || {}).forEach(([sid, lv]) => {
-    if (['A', 'B', 'C', ''].includes(lv)) {
+    if (['A', 'B', 'C', 'V', ''].includes(lv)) {
       if (lv === '') delete c.ratings[sid];
       else c.ratings[sid] = lv;
     }
   });
-  store.scheduleSave();
-  res.json(c);
+  const updated = await store.cultureUpdate(req.params.id, { ratings: c.ratings });
+  res.json(updated);
 });
 
-router.delete('/culture/:id', requireAuth, requirePos(['pho_van_the']), (req, res) => {
-  const db = getDb();
-  db.culture = db.culture.filter(x => x.id !== Number(req.params.id));
-  store.scheduleSave();
+router.delete('/culture/:id', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
+  await store.cultureDelete(req.params.id);
   res.json({ ok: true });
 });
 

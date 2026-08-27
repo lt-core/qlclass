@@ -178,6 +178,41 @@ body {
   background: #d13438; color: #fff; border-radius: 999px;
   font-size: 10.5px; font-weight: 700; padding: 1px 7px; margin-left: 2px;
 }
+.nav-toggle {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 8px;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.nav-toggle:hover { background: rgba(0, 120, 212, .09); color: var(--primary); border-color: var(--primary); }
+.nav-backdrop { display: none; }
+.nav-brand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 8px 14px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.nav-brand i {
+  width: 36px; height: 36px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--primary), #0099bc);
+  color: #fff;
+  border-radius: 9px;
+  font-size: 14px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 120, 212, .35);
+}
+.nav-brand b { font-size: 15px; font-weight: 800; }
+.nav-brand small { font-size: 11px; color: var(--muted); font-weight: 500; }
 
 main { max-width: 1200px; margin: 0 auto; padding: 22px 18px 60px; }
 
@@ -587,6 +622,7 @@ table.tbl tbody tr:hover td { background: #f7fbfe; }
 .rate-btns button.on-A { background: var(--green); color: #fff; border-color: var(--green); position: relative; z-index: 1; }
 .rate-btns button.on-B { background: #e8a400; color: #fff; border-color: #e8a400; position: relative; z-index: 1; }
 .rate-btns button.on-C { background: #d13438; color: #fff; border-color: #d13438; position: relative; z-index: 1; }
+.rate-btns button.on-V { background: #8a8f98; color: #fff; border-color: #8a8f98; position: relative; z-index: 1; }
 
 /* ---------- Filters / subtabs ---------- */
 .filters { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 14px; }
@@ -954,8 +990,9 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 
 @media (max-width: 560px) {
   .uinfo { display: none; }                             /* chỉ còn icon avatar, bấm để xem info */
-  .brand small { display: none; }                       /* gọn topbar trên điện thoại */
-  .weekbox select { min-width: 92px; }
+  .weekbox span { font-size: 12px; flex-shrink: 0; }
+  .weekbox { padding-left: 8px; flex-shrink: 0; }
+  .weekbox select { width: 106px; min-width: 0; }      /* đủ rộng cho text dù có padding 32px chevron */
   .nav a { padding: 10px 12px; font-size: 13px; }
   .subtabs button { padding: 6px 13px; font-size: 12.5px; }
   .login-card { padding: 26px 22px; }
@@ -975,6 +1012,57 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
 }
 @media (max-width: 640px) {
   .grid3 { grid-template-columns: 1fr; }
+}
+
+/* ---- Phone: compact topbar + nav tabs -> sidebar drawer ---- */
+@media (max-width: 700px) {
+  .topbar { justify-content: center; flex-wrap: nowrap; }   /* combobox giữa */
+  .brand { display: none; }                                 /* bỏ icon+title, chuyển vào sidebar */
+  .topbar .spacer { display: none; }                        /* spacer flex:1 không cho trong chế độ gọn */
+  .uinfo { display: none; }                                 /* bỏ text tên account, chỉ còn icon avatar */
+  .nav-toggle {
+    display: inline-flex;
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  }
+  .userbox { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); }
+  .nav-brand { display: flex; }
+  .nav {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    width: min(80vw, 300px);
+    flex-direction: column;
+    align-items: stretch;
+    overflow-y: auto;
+    background: var(--card);
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+    box-shadow: 2px 0 18px rgba(0, 0, 0, .18);
+    z-index: 300;
+    padding: 14px 10px 30px;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+  }
+  .nav a {
+    padding: 12px 14px;
+    border-bottom: none;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  .nav a.active {
+    border-bottom: none;
+    background: rgba(0, 120, 212, .09);
+  }
+  .nav a .badge { margin-left: 4px; }
+  body.nav-open .nav { transform: translateX(0); }
+  body.nav-open { overflow: hidden; }
+  body.nav-open .nav-backdrop {
+    display: block;
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, .38);
+    z-index: 290;
+    animation: fadeIn .2s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 }
 
 /* ---------- Global Loading ---------- */

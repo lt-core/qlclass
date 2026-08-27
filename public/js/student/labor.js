@@ -4,16 +4,23 @@ import { esc, toast, confirmDlg, fmtDate, openModal } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { enhance } from '../core/controls.js';
 
+const RATE_LV = ['A', 'B', 'C', 'V'];
+const LV_TAG = lv => lv === 'A' ? 'green' : lv === 'B' ? 'amber' : lv === 'V' ? 'gray' : 'red';
+
 async function render(el) {
   const [items, students] = await Promise.all([api('/labor?week=' + S.week), api('/students?all=1')]);
   const can = S.perms.manageLabor;
   const isSummary = typeof S.week === 'string';
+  const total = students.length;
   el.innerHTML = `
     <h2 class="page-title"><i class="fa-solid fa-broom"></i> Lao động — ${weekDisplay(S.week)}</h2>
-    <p class="page-sub">Buổi lao động do lớp phó lao động quản lý, đánh giá mức A/B/C từng học sinh.</p>
+    <p class="page-sub">Buổi lao động do lớp phó lao động quản lý, đánh giá mức A/B/C/V (V = vắng).</p>
     ${can && !isSummary ? `<div style="margin-bottom:12px"><button class="btn" id="lb-add"><i class="fa-solid fa-plus"></i> Thêm buổi lao động</button></div>` : ''}
     ${items.length ? items.map(l => {
-      const rated = students.filter(st => (l.ratings || {})[st.id]);
+      const rate = l.ratings || {};
+      const rated = students.filter(st => rate[st.id]);
+      const attended = students.filter(st => ['A', 'B', 'C'].includes(rate[st.id])).length;
+      const absent = students.filter(st => rate[st.id] === 'V').length;
       return `
       <div class="card">
         <div class="group-head">
@@ -21,12 +28,14 @@ async function render(el) {
           <span class="tag blue">${fmtDate(l.date)}</span>
           <span class="tag gray">Buổi ${esc(l.session)}</span>
           ${l.time ? `<span class="tag amber"><i class="fa-regular fa-clock"></i> ${esc(l.time)}</span>` : ''}
+          <span class="tag green"><i class="fa-solid fa-user-check"></i> ${attended}/${total} đi</span>
+          ${absent ? `<span class="tag gray"><i class="fa-solid fa-user-xmark"></i> Vắng ${absent}</span>` : ''}
           <span style="flex:1"></span>
           ${can && !isSummary ? `<button class="btn sm secondary" data-lb-rate="${l.id}"><i class="fa-solid fa-star"></i> Đánh giá</button> <button class="btn sm secondary" data-lb-edit="${l.id}"><i class="fa-solid fa-pen"></i> Sửa</button> <button class="btn sm red" data-lb-del="${l.id}">Xóa</button>` : ''}
         </div>
         ${rated.length ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${rated.map(st => {
-          const lv = (l.ratings || {})[st.id];
-          return `<span class="tag ${lv === 'A' ? 'green' : lv === 'B' ? 'amber' : 'red'}">${esc(st.name)}: ${lv}</span>`;
+          const lv = rate[st.id];
+          return `<span class="tag ${LV_TAG(lv)}">${esc(st.name)}: ${lv}</span>`;
         }).join('')}</div>` : '<div class="muted" style="margin-top:8px">Chưa đánh giá</div>'}
       </div>`;
     }).join('') : '<div class="card empty">Chưa có buổi lao động trong tuần này</div>'}`;
@@ -54,7 +63,7 @@ async function render(el) {
         <div class="lb-rate-grid">${students.map(st => {
           const lv = snapshot[st.id] || '';
           return `<div class="lb-rate-row"><span class="lb-rate-name">${esc(st.name)}</span>
-            <span class="rate-btns" data-rt-sid="${st.id}"><button class="${lv === 'A' ? 'on-A' : ''}" data-rt-lv="A">A</button><button class="${lv === 'B' ? 'on-B' : ''}" data-rt-lv="B">B</button><button class="${lv === 'C' ? 'on-C' : ''}" data-rt-lv="C">C</button></span></div>`;
+            <span class="rate-btns" data-rt-sid="${st.id}">${RATE_LV.map(r => `<button class="${lv === r ? 'on-' + r : ''}" data-rt-lv="${r}">${r}</button>`).join('')}</span></div>`;
         }).join('')}</div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
           <button class="btn secondary" id="rt-cancel">Hủy</button>
@@ -69,7 +78,7 @@ async function render(el) {
           const cur = snapshot[sid] === lv;
           snapshot[sid] = cur ? '' : lv;
           group.querySelectorAll('button').forEach(b => {
-            b.classList.remove('on-A', 'on-B', 'on-C');
+            b.classList.remove(...RATE_LV.map(r => 'on-' + r));
           });
           if (!cur) btn.classList.add('on-' + lv);
         };
