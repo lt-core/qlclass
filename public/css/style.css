@@ -150,6 +150,94 @@ body {
 .upop-meta i { width: 17px; color: var(--primary); font-size: 12px; }
 .upop-sep { height: 1px; background: var(--border); margin: 13px -14px; }
 
+/* ---------- Photo viewer ---------- */
+.photo-view {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  animation: photoIn 0.15s ease;
+}
+.pv-stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: none;
+}
+.pv-stage:active { cursor: grabbing; }
+.pv-stage img {
+  max-width: 92vw;
+  max-height: 88vh;
+  border-radius: 6px;
+  user-select: none;
+  -webkit-user-drag: none;
+  will-change: transform;
+  transition: transform 60ms ease-out;
+}
+.pv-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 41;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.95);
+  color: #1a1a1a;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+.pv-close:hover { background: #fff; }
+.pv-ctrl {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 41;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 999px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+.pv-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #eef1f5;
+  color: #222;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pv-btn:hover { background: #dfe5ec; }
+.pv-pct {
+  min-width: 52px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+}
+@keyframes photoIn { from { opacity: 0; } to { opacity: 1; } }
+
 /* ---------- Bell notifications ---------- */
 .bell-wrap { position: relative; }
 .bell-ic { position: relative; display: inline-flex; padding: 2px 4px; color: var(--muted); }

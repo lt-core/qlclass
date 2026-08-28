@@ -59,6 +59,14 @@ export function renderApp() {
   const ubtn = document.getElementById('ubtn');
   const upop = document.getElementById('upop');
   if (ubtn && upop) attachDropdown(ubtn, upop, ubtn.parentNode);
+  const upopAvatar = upop.querySelector('.upop-head .avatar img');
+  if (upopAvatar) {
+    upopAvatar.style.cursor = 'zoom-in';
+    upopAvatar.addEventListener('click', e => {
+      e.stopPropagation();
+      zoomPhoto(upopAvatar.src);
+    });
+  }
   const bellBtn = document.getElementById('bell-btn');
   const bellPop = document.getElementById('bell-pop');
   if (bellBtn && bellPop) {
@@ -243,6 +251,116 @@ async function openBellPop() {
 export function forceLogin() {
   stopNotifPolling();
   import('../login.js').then(m => m.renderLogin());
+}
+
+function zoomPhoto(src) {
+  const ov = document.createElement('div');
+  ov.className = 'photo-view';
+  ov.innerHTML = `
+    <button type="button" class="pv-close" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+    <div class="pv-stage"><img src="${esc(src)}" alt="Ảnh đại diện"></div>
+    <div class="pv-ctrl">
+      <button type="button" class="pv-btn" data-z="-1" aria-label="Thu nhỏ"><i class="fa-solid fa-minus"></i></button>
+      <span class="pv-pct">100%</span>
+      <button type="button" class="pv-btn" data-z="1" aria-label="Phóng to"><i class="fa-solid fa-plus"></i></button>
+      <button type="button" class="pv-btn" data-z="0" aria-label="Khôi phục"><i class="fa-solid fa-rotate-left"></i></button>
+    </div>`;
+  document.body.appendChild(ov);
+
+  const stage = ov.querySelector('.pv-stage');
+  const img = ov.querySelector('img');
+  const pct = ov.querySelector('.pv-pct');
+  const MIN = 0.5, MAX = 6;
+  let scale = 1, tx = 0, ty = 0;
+
+  const apply = () => {
+    img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    pct.textContent = Math.round(scale * 100) + '%';
+  };
+
+  const zoomAt = (f, cx, cy) => {
+    const n = Math.min(MAX, Math.max(MIN, scale * f));
+    if (n === scale) return;
+    const r = n / scale;
+    const box = stage.getBoundingClientRect();
+    const ox = box.width / 2, oy = box.height / 2;
+    const sx = cx - ox, sy = cy - oy;
+    tx = sx - (sx - tx) * r;
+    ty = sy - (sy - ty) * r;
+    if (scale < 1 && n === 1) { tx = 0; ty = 0; }
+    scale = n;
+    apply();
+  };
+
+  const reset = () => { scale = 1; tx = 0; ty = 0; apply(); };
+
+  const close = () => ov.remove();
+  const onKey = e => { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onKey); } };
+  document.addEventListener('keydown', onKey);
+
+  ov.querySelector('.pv-close').onclick = close;
+  ov.querySelectorAll('.pv-btn').forEach(btn => btn.onclick = () => {
+    const z = Number(btn.dataset.z);
+    if (z === 0) reset();
+    else {
+      const r = stage.getBoundingClientRect();
+      zoomAt(z > 0 ? 1.25 : 0.8, r.width / 2, r.height / 2);
+    }
+  });
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+
+  stage.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = stage.getBoundingClientRect();
+    zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+
+  img.addEventListener('dblclick', () => {
+    if (scale > 1.01) reset();
+    else {
+      const r = stage.getBoundingClientRect();
+      zoomAt(2.5, r.width / 2, r.height / 2);
+    }
+  });
+
+  const pointers = new Map();
+  let startDist = 0, startScale = 1, startTx = 0, startTy = 0, startX = 0, startY = 0;
+  stage.addEventListener('pointerdown', e => {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const [a, c] = [...pointers.values()];
+      startDist = Math.hypot(a.x - c.x, a.y - c.y);
+      startScale = scale;
+      const r = stage.getBoundingClientRect();
+      startTx = tx; startTy = ty;
+      const mx = (a.x + c.x) / 2 - r.left, my = (a.y + c.y) / 2 - r.top;
+      zoomAt(startScale / scale, mx, my);
+    } else {
+      startX = e.clientX; startY = e.clientY; startTx = tx; startTy = ty;
+    }
+  });
+  stage.addEventListener('pointermove', e => {
+    if (!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.size === 2) {
+      const [a, c] = [...pointers.values()];
+      const d = Math.hypot(a.x - c.x, a.y - c.y);
+      if (startDist > 0) {
+        const r = stage.getBoundingClientRect();
+        const mx = (a.x + c.x) / 2 - r.left, my = (a.y + c.y) / 2 - r.top;
+        zoomAt(startScale * (d / startDist) / scale, mx, my);
+      }
+    } else if (pointers.size === 1) {
+      tx = startTx + (e.clientX - startX);
+      ty = startTy + (e.clientY - startY);
+      apply();
+    }
+  });
+  const endPointer = e => { pointers.delete(e.pointerId); startDist = 0; };
+  stage.addEventListener('pointerup', endPointer);
+  stage.addEventListener('pointercancel', endPointer);
+
+  apply();
 }
 
 function changePwModal() {
