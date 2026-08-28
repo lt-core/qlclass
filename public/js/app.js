@@ -13,7 +13,7 @@ import { renderApp } from './core/layout.js';
 import { renderLogin } from './login.js';
 import { renderHome } from './home.js';
 
-const BUILD = '20260827r';
+const BUILD = '20260827w';
 console.log('[QLClass] build ' + BUILD);
 document.title = 'QLClass — Quản lý lớp học (' + BUILD + ')';
 

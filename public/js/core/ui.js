@@ -86,6 +86,19 @@ export function money(n) { return Number(n || 0).toLocaleString('vi-VN') + '₫'
 
 export function todayStr() { return new Date().toISOString().slice(0, 10); }
 
+export function balancedGridCols(count, width, min = 200, gap = 14) {
+  if (!count || count < 1 || !width || width < min) return 1;
+  const cap = Math.max(1, Math.floor((width + gap) / (min + gap)));
+  let cols;
+  if (count === 2) cols = Math.min(2, cap);
+  else if (count === 3) cols = Math.min(3, cap);
+  else if (count % 2 === 0) cols = Math.min(Math.floor(count / 2), cap);
+  else cols = Math.min(count, cap);
+  for (let d = cols; d >= 1; d--) if (count % d === 0) { cols = d; break; }
+  if (cols === 1 && count > 3 && cap >= 2) cols = 2;
+  return cols;
+}
+
 export function barHtml(value, max, warnBelow = 0) {
   const pct = Math.max(0, Math.min(100, (value || 0) * 100 / (max || 1)));
   return `<div class="bar"><div class="${value < warnBelow ? 'warn' : ''}" style="width:${pct}%"></div></div>`;

@@ -92,6 +92,7 @@ function buildPermissions(req) {
     addRecords: pos === 'to_truong',
     reviewClass: pos === 'lop_truong',
     reviewStudy: pos === 'pho_hoc_tap',
+    reviewLeader: pos === 'to_truong',
     manageLabor: pos === 'pho_lao_dong',
     manageCulture: pos === 'pho_van_the',
     manageTreasury: pos === 'thu_quy',
@@ -519,6 +520,24 @@ router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), a
     content: String(content || ''),
     updatedByName: req.user.name,
     updatedAt: new Date().toISOString()
+  };
+  const saved = await store.reviewsUpsert(rv);
+  res.json(saved);
+});
+
+router.put('/reviews/mine', requireAuth, requirePos(['to_truong']), async (req, res) => {
+  const { week, content } = req.body || {};
+  const w = Number(week) || currentWeek();
+  const meSt = getDb().students.find(s => s.id === req.user.studentId);
+  const rv = {
+    id: await store.nextSeq('reviews'),
+    week: w,
+    type: 'leader',
+    content: String(content || ''),
+    updatedByName: req.user.name,
+    updatedAt: new Date().toISOString(),
+    uid: req.user.id,
+    groupId: meSt && meSt.groupId != null ? Number(meSt.groupId) : null
   };
   const saved = await store.reviewsUpsert(rv);
   res.json(saved);

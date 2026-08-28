@@ -212,8 +212,11 @@ async function ensureSqlTables(c) {
   )`);
   await c.execute(`CREATE TABLE IF NOT EXISTS reviews (
     id INTEGER PRIMARY KEY, week INTEGER NOT NULL, type TEXT NOT NULL,
-    content TEXT DEFAULT '', updated_by_name TEXT DEFAULT '', updated_at TEXT
+    content TEXT DEFAULT '', updated_by_name TEXT DEFAULT '', updated_at TEXT,
+    uid INTEGER, group_id INTEGER
   )`);
+  try { await c.execute(`ALTER TABLE reviews ADD COLUMN uid INTEGER`); } catch (_) {}
+  try { await c.execute(`ALTER TABLE reviews ADD COLUMN group_id INTEGER`); } catch (_) {}
   await c.execute(`CREATE TABLE IF NOT EXISTS seq (
     name TEXT PRIMARY KEY, val INTEGER NOT NULL
   )`);
@@ -328,7 +331,7 @@ async function reviewsList(weekParam) {
     return list;
   }
   const rs = await dbExecute('SELECT * FROM reviews');
-  let list = rs.rows.map(r => ({ id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at }));
+  let list = rs.rows.map(r => ({ id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id) }));
   if (weekParam) list = list.filter(r => weekInRange(r.week, weekParam));
   return list;
 }
@@ -337,24 +340,31 @@ async function reviewsFind(week, type) {
   const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND type = ?', [week, type]);
   if (!rs.rows.length) return null;
   const r = rs.rows[0];
-  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at };
+  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id) };
+}
+async function reviewsFindMine(week, uid) {
+  if (!USE_DB) return get().reviews.find(x => x.week === week && x.uid != null && Number(x.uid) === Number(uid));
+  const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND uid = ?', [week, Number(uid)]);
+  if (!rs.rows.length) return null;
+  const r = rs.rows[0];
+  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id) };
 }
 async function reviewsUpsert(rv) {
   if (!USE_DB) {
-    const existing = get().reviews.find(x => x.week === rv.week && x.type === rv.type);
+    const existing = (rv.uid != null ? reviewsFindMine(rv.week, rv.uid) : get().reviews.find(x => x.week === rv.week && x.type === rv.type));
     if (existing) { Object.assign(existing, rv); scheduleSave(); return existing; }
     get().reviews.push(rv);
     scheduleSave();
     return rv;
   }
-  const existing = await reviewsFind(rv.week, rv.type);
+  const existing = rv.uid != null ? await reviewsFindMine(rv.week, rv.uid) : await reviewsFind(rv.week, rv.type);
   if (existing) {
-    await dbExecute('UPDATE reviews SET content=?, updated_by_name=?, updated_at=? WHERE id=?',
-      [rv.content || '', rv.updatedByName || '', rv.updatedAt || null, existing.id]);
-    return Object.assign(existing, rv);
+    await dbExecute('UPDATE reviews SET content=?, updated_by_name=?, updated_at=?, group_id=? WHERE id=?',
+      [rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.groupId == null ? null : Number(rv.groupId), existing.id]);
+    return Object.assign({}, existing, rv, { id: existing.id });
   }
-  await dbExecute('INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at) VALUES (?,?,?,?,?,?)',
-    [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null]);
+  await dbExecute('INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at, uid, group_id) VALUES (?,?,?,?,?,?,?,?)',
+    [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.uid == null ? null : Number(rv.uid), rv.groupId == null ? null : Number(rv.groupId)]);
   return rv;
 }
 
@@ -520,6 +530,6 @@ module.exports = {
   useSql, weekInRange, summaryRanges,
   laborList, laborGet, laborInsert, laborUpdate, laborDelete,
   cultureList, cultureGet, cultureInsert, cultureUpdate, cultureDelete,
-  reviewsList, reviewsFind, reviewsUpsert, removeStudentRatings,
+  reviewsList, reviewsFind, reviewsFindMine, reviewsUpsert, removeStudentRatings,
   get useDb() { return USE_DB; }
 };
