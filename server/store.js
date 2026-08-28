@@ -9,6 +9,7 @@ const TURSO_URL = process.env.TURSO_DATABASE_URL || '';
 const USE_DB = TURSO_URL.startsWith('libsql://') || TURSO_URL.startsWith('file:');
 
 let state = null;
+let stateRev = 0;
 let saveTimer = null;
 let dirty = false;
 let readyPromise = null;
@@ -122,6 +123,7 @@ async function initDbBackend(defaults) {
   const c = await client();
   console.log('[store] Ket noi Turso:', TURSO_URL.replace(/\/\/.*@/, '//***@'));
   await c.execute(`CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT NOT NULL)`);
+  try { await c.execute(`ALTER TABLE kv ADD COLUMN rev INTEGER NOT NULL DEFAULT 0`); } catch (_) {}
   await c.execute(`CREATE TABLE IF NOT EXISTS files (
     name TEXT PRIMARY KEY, mime TEXT NOT NULL, size INTEGER NOT NULL,
     data BLOB NOT NULL, created_at TEXT DEFAULT (datetime('now'))
@@ -132,10 +134,11 @@ async function initDbBackend(defaults) {
   )`);
   await ensureSqlTables(c);
   await migrateFromDoc(c);
-  const rs = await c.execute({ sql: 'SELECT v FROM kv WHERE k = ?', args: [DOC_KEY] });
+  const rs = await c.execute({ sql: 'SELECT v, rev FROM kv WHERE k = ?', args: [DOC_KEY] });
   if (rs.rows.length && rs.rows[0].v) {
     try {
       state = JSON.parse(String(rs.rows[0].v));
+      stateRev = Number(rs.rows[0].rev) || 0;
     } catch (e) {
       console.error('Loi doc doc tu DB, tao du lieu moi:', e.message);
       state = defaults();
@@ -165,14 +168,33 @@ async function initDbBackend(defaults) {
 async function flushDoc() {
   const payload = JSON.stringify(state);
   try {
-    await dbExecute(
-      `INSERT INTO kv (k, v) VALUES (?, ?)
-            ON CONFLICT(k) DO UPDATE SET v = excluded.v`,
+    const rs = await dbExecute(
+      `INSERT INTO kv (k, v, rev) VALUES (?, ?, 1)
+            ON CONFLICT(k) DO UPDATE SET v = excluded.v, rev = rev + 1
+            RETURNING rev`,
       [DOC_KEY, payload]
     );
+    if (rs.rows.length) stateRev = Number(rs.rows[0].rev);
+    return stateRev;
   } catch (err) {
     console.error('[store] flushDoc FAILED:', err.message || err);
     throw err;
+  }
+}
+
+async function refreshDocIfStale() {
+  if (!USE_DB) return;
+  try {
+    const rs = await dbExecute('SELECT rev FROM kv WHERE k = ?', [DOC_KEY]);
+    const rev = rs.rows.length ? Number(rs.rows[0].rev) : 0;
+    if (rev === stateRev) return;
+    const full = await dbExecute('SELECT v FROM kv WHERE k = ?', [DOC_KEY]);
+    if (full.rows.length && full.rows[0].v) {
+      state = JSON.parse(String(full.rows[0].v));
+      stateRev = rev;
+    }
+  } catch (err) {
+    console.error('[store] refreshDocIfStale FAILED:', err.message || err);
   }
 }
 
@@ -494,7 +516,7 @@ process.on('SIGINT', () => process.exit(0));
 
 module.exports = {
   ensureReady, get, scheduleSave, persistNow, persistIfDirty, isDirty,
-  nextId, nextSeq, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
+  refreshDocIfStale, nextId, nextSeq, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
   useSql, weekInRange, summaryRanges,
   laborList, laborGet, laborInsert, laborUpdate, laborDelete,
   cultureList, cultureGet, cultureInsert, cultureUpdate, cultureDelete,

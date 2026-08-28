@@ -6,6 +6,11 @@ const api = require('./api');
 const app = express();
 app.use(express.json({ limit: '4mb' }));
 
+app.use(async (req, res, next) => {
+  try { await store.refreshDocIfStale(); } catch (_) {}
+  next();
+});
+
 if (process.env.VERCEL) {
   app.use((req, res, next) => {
     const origJson = res.json.bind(res);
