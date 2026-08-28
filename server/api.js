@@ -513,7 +513,7 @@ router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), a
   if (!['class', 'study'].includes(type)) return res.status(400).json({ error: 'Loại nhận xét không hợp lệ' });
   const w = Number(week) || currentWeek();
   const rv = {
-    id: store.nextId('reviews'),
+    id: await store.nextSeq('reviews'),
     week: w,
     type,
     content: String(content || ''),
@@ -545,7 +545,7 @@ router.post('/labor', requireAuth, requirePos(['pho_lao_dong']), async (req, res
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên buổi lao động' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
   const l = {
-    id: store.nextId('labor'),
+    id: await store.nextSeq('labor'),
     name: String(b.name).trim(),
     date: b.date,
     session: ['Sáng', 'Chiều', 'Tối'].includes(b.session) ? b.session : 'Sáng',
@@ -608,7 +608,7 @@ router.post('/culture', requireAuth, requirePos(['pho_van_the']), async (req, re
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên hoạt động' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
-  const c = { id: store.nextId('culture'), name: String(b.name).trim(), date: b.date, desc: String(b.desc || ''), ratings: {} };
+  const c = { id: await store.nextSeq('culture'), name: String(b.name).trim(), date: b.date, desc: String(b.desc || ''), ratings: {} };
   await store.cultureInsert(c);
   res.json(c);
 });

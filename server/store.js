@@ -192,6 +192,9 @@ async function ensureSqlTables(c) {
     id INTEGER PRIMARY KEY, week INTEGER NOT NULL, type TEXT NOT NULL,
     content TEXT DEFAULT '', updated_by_name TEXT DEFAULT '', updated_at TEXT
   )`);
+  await c.execute(`CREATE TABLE IF NOT EXISTS seq (
+    name TEXT PRIMARY KEY, val INTEGER NOT NULL
+  )`);
 }
 
 async function migrateFromDoc(c) {
@@ -399,6 +402,24 @@ function nextId(collection) {
   return db.counters[collection];
 }
 
+const SEQ_TABLES = { reviews: 'reviews', labor: 'labor', culture: 'culture' };
+
+async function nextSeq(collection) {
+  const tbl = SEQ_TABLES[collection];
+  if (!tbl) return nextId(collection);
+  const rs = await dbExecute(
+    'INSERT INTO seq (name, val) VALUES (?, 0) ON CONFLICT(name) DO UPDATE SET val = val + 1 RETURNING val',
+    [collection]
+  );
+  let v = Number(rs.rows[0].val);
+  const max = Number((await dbExecute(`SELECT COALESCE(MAX(id), 0) m FROM ${tbl}`)).rows[0].m);
+  if (v <= max) {
+    v = max + 1;
+    await dbExecute('UPDATE seq SET val = ? WHERE name = ?', [v, collection]);
+  }
+  return v;
+}
+
 async function putFile(name, mime, buf) {
   if (USE_DB) {
     await dbExecute(
@@ -473,7 +494,7 @@ process.on('SIGINT', () => process.exit(0));
 
 module.exports = {
   ensureReady, get, scheduleSave, persistNow, persistIfDirty, isDirty,
-  nextId, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
+  nextId, nextSeq, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
   useSql, weekInRange, summaryRanges,
   laborList, laborGet, laborInsert, laborUpdate, laborDelete,
   cultureList, cultureGet, cultureInsert, cultureUpdate, cultureDelete,
