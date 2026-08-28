@@ -174,7 +174,7 @@ router.get('/bootstrap', requireAuth, (req, res) => {
   });
 });
 
-router.put('/settings', requireAuth, requireAdmin, (req, res) => {
+router.put('/settings', requireAuth, requireAdmin, async (req, res) => {
   const db = getDb();
   const b = req.body || {};
   const num = (v, min, dflt) => { const n = Number(v); return isFinite(n) && n >= min ? n : dflt; };
@@ -187,7 +187,12 @@ router.put('/settings', requireAuth, requireAdmin, (req, res) => {
     baseStudentWeek: num(b.baseStudentWeek, 0, db.settings.baseStudentWeek),
     baseClassWeek: num(b.baseClassWeek, 0, db.settings.baseClassWeek)
   };
-  store.scheduleSave();
+  try {
+    await store.persistNow();
+  } catch (e) {
+    console.error('[api] Loi luu settings:', e.message || e);
+    return res.status(500).json({ error: 'Không lưu được cài đặt, thử lại' });
+  }
   res.json(db.settings);
 });
 

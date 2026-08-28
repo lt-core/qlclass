@@ -75,6 +75,9 @@ function ensureReady(defaults) {
   if (readyPromise) return readyPromise;
   readyPromise = (USE_DB ? initDbBackend(defaults) : Promise.resolve(initFileBackend(defaults)))
     .then(() => { console.log(`[store] san sang (che do: ${USE_DB ? 'Turso/libSQL' : 'file'})`); });
+  if (!process.env.VERCEL) {
+    setInterval(() => { persistIfDirty(); }, 5000);
+  }
   return readyPromise;
 }
 
