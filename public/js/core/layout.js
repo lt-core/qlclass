@@ -3,6 +3,10 @@ import { esc, toast, openModal } from './ui.js';
 import { navLinks, navigate, applyRouter } from './router.js';
 import { enhance, attachDropdown } from './controls.js';
 
+let notifTimer = null;
+let notifBusy = false;
+let lastAnnCount = -1;
+
 export function renderApp() {
   const initials = (S.me.name || S.me.username).split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
   const roleLabel = S.me.role === 'admin' ? 'Quản trị viên' : S.me.role === 'teacher' ? 'Giáo viên' : esc(POS_LABEL[(S.student || {}).position] || 'Học sinh');
@@ -62,6 +66,7 @@ export function renderApp() {
     bellBtn.addEventListener('click', () => { if (!bellPop.hidden) openBellPop(); });
   }
   refreshNotifs();
+  startNotifPolling();
   document.getElementById('btn-changepw').onclick = () => changePwModal();
   document.getElementById('btn-logout').onclick = async () => {
     const { api } = await import('./http.js');
@@ -164,17 +169,52 @@ function annTimeAgo(iso) {
 }
 
 async function refreshNotifs() {
-  const list = await fetchAnns();
-  const n = list.length;
-  setBadge('announcements', n);
-  const badge = document.getElementById('bell-badge');
-  if (badge) {
-    badge.hidden = n === 0;
-    badge.textContent = n > 99 ? '99+' : String(n);
+  if (notifBusy) return;
+  notifBusy = true;
+  try {
+    const list = await fetchAnns();
+    const n = list.length;
+    if (lastAnnCount >= 0 && n > lastAnnCount && n > 0) flashBell();
+    lastAnnCount = n;
+    setBadge('announcements', n);
+    const badge = document.getElementById('bell-badge');
+    if (badge) {
+      badge.hidden = n === 0;
+      badge.textContent = n > 99 ? '99+' : String(n);
+    }
+    const bell = document.getElementById('bell-btn');
+    if (bell) bell.hidden = n === 0;
+    return list;
+  } finally {
+    notifBusy = false;
   }
+}
+
+function flashBell() {
   const bell = document.getElementById('bell-btn');
-  if (bell) bell.hidden = n === 0;
-  return list;
+  if (!bell) return;
+  bell.classList.remove('bell-new');
+  void bell.offsetWidth;
+  bell.classList.add('bell-new');
+  setTimeout(() => bell.classList.remove('bell-new'), 4000);
+}
+
+function startNotifPolling() {
+  if (notifTimer) return;
+  notifTimer = setInterval(() => { refreshNotifs(); }, 30000);
+  document.addEventListener('visibilitychange', onVisChange);
+}
+
+function onVisChange() {
+  if (document.visibilityState === 'visible') refreshNotifs();
+}
+
+function stopNotifPolling() {
+  if (notifTimer) {
+    clearInterval(notifTimer);
+    notifTimer = null;
+  }
+  document.removeEventListener('visibilitychange', onVisChange);
 }
 
 export function markAnnSeen() {
@@ -201,6 +241,7 @@ async function openBellPop() {
 }
 
 export function forceLogin() {
+  stopNotifPolling();
   import('../login.js').then(m => m.renderLogin());
 }
 
