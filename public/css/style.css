@@ -1502,3 +1502,12 @@ input[type="time"]::-webkit-calendar-picker-indicator { display: none !important
   max-width: 420px;
   margin: 0 0 18px;
 }
+table.tbl tr.row-active td { background: #edf6ff; }
+table.tbl tr.row-active td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+select.filter-sel {
+  min-width: 180px;
+  min-height: 34px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 6px 10px;
+}
