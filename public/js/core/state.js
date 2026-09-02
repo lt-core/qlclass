@@ -14,9 +14,40 @@ export function weekDisplay(w) {
   return 'Tuần ' + w;
 }
 
+function applyClassToSettings(c) {
+  S.settings = { ...(S.settings || {}), ...{
+    className: c.name, schoolYear: c.schoolYear, grade: c.grade,
+    weeks: c.weeks, startDate: c.startDate,
+    baseStudentWeek: c.baseStudentWeek, baseClassWeek: c.baseClassWeek
+  } };
+  S.currentClassId = Number(c.id);
+}
+
+export function findClass(id) {
+  return (S.classes || []).find(c => Number(c.id) === Number(id));
+}
+
+export function applyClassSettingsById(id) {
+  const c = findClass(id);
+  if (c) { applyClassToSettings(c); return true; }
+  return false;
+}
+
+export function persistTeacherClass(id) {
+  if (S.me && S.me.role === 'teacher') {
+    localStorage.setItem('qlc_teacher_class_' + S.me.id, String(id));
+  }
+}
+
+export function teacherSavedClassId() {
+  if (!S.me || S.me.role !== 'teacher') return null;
+  const v = localStorage.getItem('qlc_teacher_class_' + S.me.id);
+  return v == null ? null : Number(v);
+}
+
 export const S = {
   me: null, student: null, settings: null, groups: [], types: [], perms: {},
-  classes: [], currentClassId: null,
+  classes: [], currentClassId: null, managedClassIds: null,
   week: 1, selSid: null, lifeTab: 'labor', counts: {}
 };
 
@@ -31,6 +62,7 @@ export async function loadBootstrap() {
   S.counts = b.counts || {};
   S.classes = b.classes || [];
   S.currentClassId = b.currentClassId;
+  S.managedClassIds = b.managedClassIds ?? null;
   S.week = b.currentWeek;
   const saved = localStorage.getItem('qlc_week');
   if (saved !== null) {

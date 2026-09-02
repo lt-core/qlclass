@@ -1,4 +1,4 @@
-import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay } from './state.js';
+import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay, applyClassSettingsById, persistTeacherClass } from './state.js';
 import { esc, toast, openModal } from './ui.js';
 import { navLinks, navigate, applyRouter } from './router.js';
 import { enhance, attachDropdown } from './controls.js';
@@ -93,6 +93,13 @@ export function renderApp() {
   if (classSel) {
     classSel.onchange = async e => {
       const id = Number(e.target.value);
+      if (S.me.role === 'teacher') {
+        if (applyClassSettingsById(id)) {
+          persistTeacherClass(id);
+          window.location.reload();
+        }
+        return;
+      }
       try {
         const { api } = await import('./http.js');
         await api('/current-class', { method: 'PUT', body: { id } });
@@ -139,8 +146,15 @@ function closeNavDrawer() {
 }
 
 function classSwitchHtml() {
-  if (S.me && S.me.role === 'admin' && S.classes && S.classes.length > 0) {
-    return `<div class="weekbox" title="Chọn lớp đang quản lý"><span>Lớp</span><select id="class-sel">${S.classes.map(c => `<option value="${c.id}" ${S.currentClassId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>`;
+  if (!S.me) return '';
+  let list = [];
+  if (S.me.role === 'admin') {
+    list = S.classes || [];
+  } else if (S.me.role === 'teacher' && Array.isArray(S.managedClassIds) && S.managedClassIds.length > 1) {
+    list = (S.classes || []).filter(c => S.managedClassIds.includes(Number(c.id)));
+  }
+  if (list.length > 0) {
+    return `<div class="weekbox" title="Chọn lớp đang quản lý"><span>Lớp</span><select id="class-sel">${list.map(c => `<option value="${c.id}" ${S.currentClassId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>`;
   }
   return '';
 }

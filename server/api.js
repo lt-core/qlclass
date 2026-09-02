@@ -158,12 +158,18 @@ function scopeStudents(req) {
 
 router.get('/bootstrap', requireAuth, (req, res) => {
   const db = getDb();
+  const classes = db.classes || [];
+  let managedClassIds = null;
+  if (req.user.role === 'teacher') {
+    managedClassIds = classes.filter(c => (c.managerIds || []).includes(req.user.id)).map(c => c.id);
+  }
   res.json({
     me: publicUser(req.user),
     student: db.students.find(s => s.id === req.user.studentId) || null,
     settings: db.settings,
-    classes: db.classes || [],
+    classes: classes,
     currentClassId: db.settings ? db.settings.currentClassId : null,
+    managedClassIds: managedClassIds,
     groups: db.groups,
     types: db.types,
     currentWeek: currentWeek(),
