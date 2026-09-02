@@ -5,12 +5,28 @@ import { registerRoute } from '../core/router.js';
 
 async function render(view) {
   const teachers = await api('/users');
+  const classes = await api('/classes');
   const s = S.settings;
   view.innerHTML = `
     <h2 class="page-title"><i class="fa-solid fa-gear"></i> Quản trị hệ thống</h2>
     <p class="page-sub">Chỉ ADMIN có quyền truy cập mục này.</p>
+    <div class="card"><h3><i class="fa-solid fa-school"></i> Quản lý lớp học</h3>
+      <div style="margin-bottom:10px"><button class="btn" id="cl-add"><i class="fa-solid fa-plus"></i> Thêm lớp mới</button></div>
+      <table class="tbl"><thead><tr><th>Tên lớp</th><th>Năm học</th><th>Khối</th><th>Số tuần</th><th>Giáo viên quản lý</th><th class="actions"></th></tr></thead>
+      <tbody>${classes.map(c => `<tr>
+        <td><b>${esc(c.name)}</b></td>
+        <td>${esc(c.schoolYear)}</td>
+        <td>Khối ${c.grade}</td>
+        <td>${c.weeks} tuần</td>
+        <td>${(c.managers || []).map(m => `<span class="tag">${esc(m.name)}</span>`).join(' ') || '<span class="muted">Chưa có</span>'}</td>
+        <td class="actions">
+          <button class="btn sm secondary" data-cl-edit="${c.id}"><i class="fa-solid fa-pen"></i> Sửa</button>
+          <button class="btn sm secondary" data-cl-mgr="${c.id}"><i class="fa-solid fa-chalkboard-user"></i> GV</button>
+          <button class="btn sm red" data-cl-del="${c.id}"><i class="fa-solid fa-trash-can"></i></button>
+        </td></tr>`).join('')}</tbody></table>
+    </div>
     <div class="grid2">
-      <div class="card"><h3><i class="fa-solid fa-book"></i> Cài đặt lớp & năm học</h3>
+      <div class="card"><h3><i class="fa-solid fa-book"></i> Cài đặt năm học</h3>
         <div class="row-flex">
           <div style="flex:1"><label class="f">Năm học</label><input type="text" id="st-year" value="${esc(s.schoolYear)}"></div>
           <div style="flex:1"><label class="f">Tên lớp</label><input type="text" id="st-class" value="${esc(s.className)}"></div>
@@ -47,6 +63,87 @@ async function render(view) {
           <td class="actions"><button class="btn sm secondary" data-type-edit="${t.id}"><i class="fa-solid fa-pen"></i></button> <button class="btn sm red" data-type-del="${t.id}"><i class="fa-solid fa-trash-can"></i></button></td></tr>`).join('')}</tbody></table>
       </div>
     </div>`;
+
+  document.getElementById('cl-add').onclick = () => classModal(null);
+  view.querySelectorAll('[data-cl-edit]').forEach(b => b.onclick = () => classModal(classes.find(c => c.id === Number(b.dataset.clEdit))));
+  view.querySelectorAll('[data-cl-mgr]').forEach(b => b.onclick = () => managerModal(classes.find(c => c.id === Number(b.dataset.clMgr))));
+  view.querySelectorAll('[data-cl-del]').forEach(b => b.onclick = async () => {
+    const c = classes.find(x => x.id === Number(b.dataset.clDel));
+    if (!c) return;
+    if (await confirmDlg(`Xóa lớp ${esc(c.name)}? Không thể xóa lớp duy nhất.`)) {
+      try { await api('/classes/' + c.id, { method: 'DELETE' }); toast('Đã xóa', 'ok'); render(view); } catch (e) { toast(e.message, 'err'); }
+    }
+  });
+
+  function classModal(item) {
+    const isAdd = !item;
+    const m = openModal({
+      title: isAdd ? 'Thêm lớp mới' : `Sửa lớp ${esc(item.name)}`,
+      wide: true,
+      body: `
+        <div class="row-flex">
+          <div style="flex:1"><label class="f">Tên lớp</label><input type="text" id="cl-name" value="${esc(isAdd ? '' : item.name)}"></div>
+          <div style="flex:1"><label class="f">Năm học</label><input type="text" id="cl-year" placeholder="VD: 2025-2026" value="${esc(isAdd ? '' : item.schoolYear)}"></div>
+        </div>
+        <div class="row-flex">
+          <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[10, 11, 12].map(k => `<option value="${k}" ${(isAdd ? 12 : item.grade) === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
+          <div style="flex:1"><label class="f">Số tuần năm học</label><input type="number" id="cl-weeks" min="1" max="60" value="${isAdd ? 36 : item.weeks}"></div>
+        </div>
+        <label class="f">Ngày bắt đầu năm học (tuần 1)</label><input type="date" id="cl-start" value="${isAdd ? '' : item.startDate}">
+        <div class="row-flex">
+          <div style="flex:1"><label class="f">Điểm mặc định/tuần — học sinh</label><input type="number" id="cl-basestu" min="0" value="${isAdd ? 0 : item.baseStudentWeek}"></div>
+          <div style="flex:1"><label class="f">Điểm mặc định/tuần — cả lớp</label><input type="number" id="cl-basecls" min="0" value="${isAdd ? 0 : item.baseClassWeek}"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn secondary" id="cl-cancel">Hủy</button>
+          <button class="btn" id="cl-save">Lưu</button></div>`
+    });
+    m.el.querySelector('#cl-cancel').onclick = m.close;
+    m.el.querySelector('#cl-save').onclick = async () => {
+      const body = {
+        name: m.el.querySelector('#cl-name').value,
+        schoolYear: m.el.querySelector('#cl-year').value,
+        grade: Number(m.el.querySelector('#cl-grade').value),
+        weeks: Number(m.el.querySelector('#cl-weeks').value),
+        startDate: m.el.querySelector('#cl-start').value,
+        baseStudentWeek: Number(m.el.querySelector('#cl-basestu').value),
+        baseClassWeek: Number(m.el.querySelector('#cl-basecls').value)
+      };
+      try {
+        if (isAdd) await api('/classes', { method: 'POST', body });
+        else await api('/classes/' + item.id, { method: 'PUT', body });
+        toast('Đã lưu lớp', 'ok');
+        m.close();
+        render(view);
+      } catch (e) { toast(e.message, 'err'); }
+    };
+  }
+
+  function managerModal(cls) {
+    const m = openModal({
+      title: `Giáo viên quản lý — ${esc(cls.name)}`,
+      body: `
+        <p class="page-sub" style="margin-top:0">Chọn giáo viên quản lý lớp này (có thể chọn nhiều).</p>
+        ${teachers.map(t => `
+          <label class="chk" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <input type="checkbox" class="mgr-cb" value="${t.id}" ${(cls.managers || []).some(m => m.id === t.id) ? 'checked' : ''}>
+            <span>${esc(t.name)} (${esc(t.username)})</span>
+          </label>`).join('') || '<p class="muted">Chưa có giáo viên. Hãy thêm giáo viên trước.</p>'}
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+          <button class="btn secondary" id="mgr-cancel">Hủy</button>
+          <button class="btn" id="mgr-save">Lưu</button></div>`
+    });
+    m.el.querySelector('#mgr-cancel').onclick = m.close;
+    m.el.querySelector('#mgr-save').onclick = async () => {
+      const ids = [...m.el.querySelectorAll('.mgr-cb:checked')].map(cb => Number(cb.value));
+      try {
+        await api('/classes/' + cls.id + '/managers', { method: 'PUT', body: { managerIds: ids } });
+        toast('Đã lưu giáo viên quản lý', 'ok');
+        m.close();
+        render(view);
+      } catch (e) { toast(e.message, 'err'); }
+    };
+  }
 
   document.getElementById('st-save').onclick = async () => {
     try {

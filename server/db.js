@@ -149,6 +149,18 @@ function defaults() {
     users.push({ id: ++uid, username, role: 'student', name: s.name, studentId: s.id, salt, passHash: hash, createdAt: now });
   }
 
+  const defaultClass = {
+    id: 1,
+    name: '12A1',
+    schoolYear: '2025-2026',
+    grade: 12,
+    weeks: 36,
+    startDate: '2025-09-08',
+    baseStudentWeek: 100,
+    baseClassWeek: 400,
+    managerIds: []
+  };
+
   return {
     settings: {
       schoolYear: '2025-2026',
@@ -157,8 +169,10 @@ function defaults() {
       weeks: 36,
       startDate: '2025-09-08',
       baseStudentWeek: 100,
-      baseClassWeek: 400
+      baseClassWeek: 400,
+      currentClassId: 1
     },
+    classes: [defaultClass],
     users,
     tokens: {},
     types: [

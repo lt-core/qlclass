@@ -16,6 +16,7 @@ export function weekDisplay(w) {
 
 export const S = {
   me: null, student: null, settings: null, groups: [], types: [], perms: {},
+  classes: [], currentClassId: null,
   week: 1, selSid: null, lifeTab: 'labor', counts: {}
 };
 
@@ -28,6 +29,8 @@ export async function loadBootstrap() {
   S.types = b.types;
   S.perms = b.permissions;
   S.counts = b.counts || {};
+  S.classes = b.classes || [];
+  S.currentClassId = b.currentClassId;
   S.week = b.currentWeek;
   const saved = localStorage.getItem('qlc_week');
   if (saved !== null) {

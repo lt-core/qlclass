@@ -84,6 +84,31 @@ function ensureReady(defaults) {
 
 /* ---------- Backend file (dev local) ---------- */
 
+function migrateClasses() {
+  if (!state) return;
+  if (!state.classes || !Array.isArray(state.classes) || state.classes.length === 0) {
+    const s = state.settings || {};
+    const defaultClass = {
+      id: 1,
+      name: s.className || 'Lớp 1',
+      schoolYear: s.schoolYear || new Date().getFullYear() + '-' + (new Date().getFullYear() + 1),
+      grade: s.grade || 10,
+      weeks: s.weeks || 36,
+      startDate: s.startDate || '',
+      baseStudentWeek: s.baseStudentWeek || 0,
+      baseClassWeek: s.baseClassWeek || 0,
+      managerIds: []
+    };
+    state.classes = [defaultClass];
+    state.settings = state.settings || {};
+    state.settings.currentClassId = 1;
+    console.log('[store] Da tao lop mac dinh tu settings cu');
+  }
+  if (state.settings && state.settings.currentClassId == null) {
+    state.settings.currentClassId = state.classes.length > 0 ? state.classes[0].id : 1;
+  }
+}
+
 function initFileBackend(defaults) {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
   let loaded = null;
@@ -96,6 +121,7 @@ function initFileBackend(defaults) {
     }
   }
   state = loaded || defaults();
+  migrateClasses();
   if (!loaded) persistNow();
 }
 
@@ -150,6 +176,7 @@ async function initDbBackend(defaults) {
     await flushDoc();
     console.log('[store] Da khoi tao du lieu mac dinh trong DB');
   }
+  migrateClasses();
   // chuyen cac token con sot trong document sang bang rieng (lan dau tien)
   const legacy = Object.entries((state && state.tokens) || {});
   if (legacy.length) {

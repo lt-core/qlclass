@@ -162,6 +162,8 @@ router.get('/bootstrap', requireAuth, (req, res) => {
     me: publicUser(req.user),
     student: db.students.find(s => s.id === req.user.studentId) || null,
     settings: db.settings,
+    classes: db.classes || [],
+    currentClassId: db.settings ? db.settings.currentClassId : null,
     groups: db.groups,
     types: db.types,
     currentWeek: currentWeek(),
@@ -186,7 +188,8 @@ router.put('/settings', requireAuth, requireAdmin, async (req, res) => {
     weeks: Math.round(num(b.weeks, 1, db.settings.weeks)),
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(b.startDate || '') ? b.startDate : db.settings.startDate,
     baseStudentWeek: num(b.baseStudentWeek, 0, db.settings.baseStudentWeek),
-    baseClassWeek: num(b.baseClassWeek, 0, db.settings.baseClassWeek)
+    baseClassWeek: num(b.baseClassWeek, 0, db.settings.baseClassWeek),
+    currentClassId: db.settings.currentClassId
   };
   try {
     await store.persistNow();
@@ -195,6 +198,124 @@ router.put('/settings', requireAuth, requireAdmin, async (req, res) => {
     return res.status(500).json({ error: 'Không lưu được cài đặt, thử lại' });
   }
   res.json(db.settings);
+});
+
+/* ---------- Quan ly lop hoc (classes) ---------- */
+
+function publicClass(c) {
+  return {
+    id: c.id,
+    name: c.name,
+    schoolYear: c.schoolYear,
+    grade: c.grade,
+    weeks: c.weeks,
+    startDate: c.startDate,
+    baseStudentWeek: c.baseStudentWeek,
+    baseClassWeek: c.baseClassWeek,
+    managerIds: c.managerIds || []
+  };
+}
+
+function syncSettingsFromClass(db, c) {
+  db.settings.schoolYear = c.schoolYear || db.settings.schoolYear;
+  db.settings.className = c.name || db.settings.className;
+  db.settings.grade = c.grade || db.settings.grade;
+  db.settings.weeks = c.weeks || db.settings.weeks;
+  db.settings.startDate = c.startDate || db.settings.startDate;
+  db.settings.baseStudentWeek = c.baseStudentWeek || 0;
+  db.settings.baseClassWeek = c.baseClassWeek || 0;
+}
+
+router.get('/classes', requireAuth, requireAdmin, (req, res) => {
+  const db = getDb();
+  const teacherNames = {};
+  db.users.filter(u => u.role === 'teacher').forEach(u => { teacherNames[u.id] = u.name; });
+  res.json((db.classes || []).map(c => ({
+    ...publicClass(c),
+    managers: (c.managerIds || []).map(id => ({ id, name: teacherNames[id] || 'Giáo viên' }))
+  })));
+});
+
+router.post('/classes', requireAuth, requireAdmin, (req, res) => {
+  const db = getDb();
+  db.classes = db.classes || [];
+  const b = req.body || {};
+  if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên lớp' });
+  const num = (v, min, dflt) => { const n = Number(v); return isFinite(n) && n >= min ? n : dflt; };
+  const c = {
+    id: store.nextId('classes'),
+    name: String(b.name).trim(),
+    schoolYear: String(b.schoolYear || '').trim(),
+    grade: num(b.grade, 1, 10),
+    weeks: Math.round(num(b.weeks, 1, 36)),
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(b.startDate || '') ? b.startDate : '',
+    baseStudentWeek: num(b.baseStudentWeek, 0, 0),
+    baseClassWeek: num(b.baseClassWeek, 0, 0),
+    managerIds: (Array.isArray(b.managerIds) ? b.managerIds : []).map(Number).filter(id => db.users.some(u => u.id === id && u.role === 'teacher'))
+  };
+  db.classes.push(c);
+  if (db.settings && db.settings.currentClassId == null) db.settings.currentClassId = c.id;
+  store.scheduleSave();
+  res.json(publicClass(c));
+});
+router.put('/classes/:id', requireAuth, requireAdmin, (req, res) => {
+  const db = getDb();
+  db.classes = db.classes || [];
+  const c = db.classes.find(x => x.id === Number(req.params.id));
+  if (!c) return res.status(404).json({ error: 'Không tìm thấy lớp' });
+  const b = req.body || {};
+  const num = (v, min, dflt) => { const n = Number(v); return isFinite(n) && n >= min ? n : dflt; };
+  if (b.name !== undefined && String(b.name).trim()) c.name = String(b.name).trim();
+  if (b.schoolYear !== undefined) c.schoolYear = String(b.schoolYear).trim();
+  if (b.grade !== undefined) c.grade = num(b.grade, 1, c.grade);
+  if (b.weeks !== undefined) c.weeks = Math.round(num(b.weeks, 1, c.weeks));
+  if (b.startDate !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.startDate)) c.startDate = b.startDate;
+  if (b.baseStudentWeek !== undefined) c.baseStudentWeek = num(b.baseStudentWeek, 0, c.baseStudentWeek);
+  if (b.baseClassWeek !== undefined) c.baseClassWeek = num(b.baseClassWeek, 0, c.baseClassWeek);
+  if (db.settings && db.settings.currentClassId === c.id) syncSettingsFromClass(db, c);
+  store.scheduleSave();
+  res.json(publicClass(c));
+});
+
+router.put('/classes/:id/managers', requireAuth, requireAdmin, (req, res) => {
+  const db = getDb();
+  db.classes = db.classes || [];
+  const c = db.classes.find(x => x.id === Number(req.params.id));
+  if (!c) return res.status(404).json({ error: 'Không tìm thấy lớp' });
+  const { managerIds } = req.body || {};
+  if (!Array.isArray(managerIds)) return res.status(400).json({ error: 'Danh sách quản lý không hợp lệ' });
+  c.managerIds = managerIds.map(Number).filter(id => db.users.some(u => u.id === id && u.role === 'teacher'));
+  store.scheduleSave();
+  res.json(publicClass(c));
+});
+
+router.delete('/classes/:id', requireAuth, requireAdmin, (req, res) => {
+  const db = getDb();
+  db.classes = db.classes || [];
+  const id = Number(req.params.id);
+  const idx = db.classes.findIndex(x => x.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Không tìm thấy lớp' });
+  if (db.classes.length === 1) return res.status(400).json({ error: 'Không thể xóa lớp duy nhất' });
+  db.classes.splice(idx, 1);
+  if ((db.settings && db.settings.currentClassId) === id) {
+    db.settings.currentClassId = db.classes[0].id;
+    syncSettingsFromClass(db, db.classes[0]);
+  }
+  store.scheduleSave();
+  res.json({ ok: true });
+});
+
+router.put('/current-class', requireAuth, requireAdmin, (req, res) => {
+  const db = getDb();
+  const b = req.body || {};
+  const id = Number(b.id);
+  const c = (db.classes || []).find(x => x.id === id);
+  if (!c) return res.status(404).json({ error: 'Không tìm thấy lớp' });
+  db.settings = db.settings || {};
+  db.settings.currentClassId = c.id;
+  syncSettingsFromClass(db, c);
+  store.scheduleSave();
+  res.json({ currentClassId: c.id, className: c.name });
 });
 
 router.get('/types', requireAuth, (req, res) => {

@@ -20,6 +20,7 @@ export function renderApp() {
       <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
       <div class="brand"><i class="fa-solid fa-graduation-cap"></i><span class="brand-name">QLClass</span><small>${esc(S.settings.className)} • KH ${esc(S.settings.schoolYear)}</small></div>
       <div class="spacer"></div>
+      ${classSwitchHtml()}
       <div class="weekbox"><span>Tuần</span><select id="week-sel">${weekOptions()}</select></div>
       <div class="udrop bell-wrap">
         <button type="button" class="ubtn" id="bell-btn" title="Thông báo" aria-label="Thông báo">
@@ -88,6 +89,21 @@ export function renderApp() {
     localStorage.setItem('qlc_week', String(S.week));
     applyRouter();
   };
+  const classSel = document.getElementById('class-sel');
+  if (classSel) {
+    classSel.onchange = async e => {
+      const id = Number(e.target.value);
+      try {
+        const { api } = await import('./http.js');
+        await api('/current-class', { method: 'PUT', body: { id } });
+        S.currentClassId = id;
+        window.location.reload();
+      } catch (err) {
+        const { toast } = await import('./ui.js');
+        toast(err.message || 'Không đổi được lớp', 'err');
+      }
+    };
+  }
   wireNavDrawer();
 }
 
@@ -120,6 +136,13 @@ function closeNavDrawer() {
   document.body.classList.remove('nav-open');
   const toggle = document.getElementById('nav-toggle');
   if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function classSwitchHtml() {
+  if (S.me && S.me.role === 'admin' && S.classes && S.classes.length > 0) {
+    return `<div class="weekbox" title="Chọn lớp đang quản lý"><span>Lớp</span><select id="class-sel">${S.classes.map(c => `<option value="${c.id}" ${S.currentClassId === c.id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>`;
+  }
+  return '';
 }
 
 function weekOptions() {
