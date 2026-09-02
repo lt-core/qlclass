@@ -50,13 +50,13 @@ async function render(view) {
       </div>
     </div>
     <div class="grid2">
-      <div class="card"><h3><i class="fa-solid fa-trophy"></i> Loại thành tích (điểm cộng)</h3>
+      <div class="card"><h3><i class="fa-solid fa-trophy"></i> Loại thành tích (điểm cộng) — <span class="muted">${esc(S.settings.className)}</span></h3>
         <div style="margin-bottom:10px"><button class="btn green" data-type-add="achievement"><i class="fa-solid fa-plus"></i> Thêm loại thành tích</button></div>
         <table class="tbl"><thead><tr><th>Tên</th><th>Điểm cộng</th><th class="actions"></th></tr></thead>
         <tbody>${S.types.filter(t => t.kind === 'achievement').map(t => `<tr><td>${esc(t.name)}</td><td><b>+${t.points}</b></td>
           <td class="actions"><button class="btn sm secondary" data-type-edit="${t.id}"><i class="fa-solid fa-pen"></i></button> <button class="btn sm red" data-type-del="${t.id}"><i class="fa-solid fa-trash-can"></i></button></td></tr>`).join('')}</tbody></table>
       </div>
-      <div class="card"><h3><i class="fa-solid fa-triangle-exclamation"></i> Loại vi phạm (điểm trừ)</h3>
+      <div class="card"><h3><i class="fa-solid fa-triangle-exclamation"></i> Loại vi phạm (điểm trừ) — <span class="muted">${esc(S.settings.className)}</span></h3>
         <div style="margin-bottom:10px"><button class="btn red" data-type-add="violation"><i class="fa-solid fa-plus"></i> Thêm loại vi phạm</button></div>
         <table class="tbl"><thead><tr><th>Tên</th><th>Điểm trừ</th><th class="actions"></th></tr></thead>
         <tbody>${S.types.filter(t => t.kind === 'violation').map(t => `<tr><td>${esc(t.name)}</td><td><b>-${t.points}</b></td>

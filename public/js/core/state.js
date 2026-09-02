@@ -20,6 +20,7 @@ function applyClassToSettings(c) {
     weeks: c.weeks, startDate: c.startDate,
     baseStudentWeek: c.baseStudentWeek, baseClassWeek: c.baseClassWeek
   } };
+  S.types = (c.types || []).map(t => ({ ...t }));
   S.currentClassId = Number(c.id);
 }
 

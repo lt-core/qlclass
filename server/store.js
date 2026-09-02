@@ -97,16 +97,25 @@ function migrateClasses() {
       startDate: s.startDate || '',
       baseStudentWeek: s.baseStudentWeek || 0,
       baseClassWeek: s.baseClassWeek || 0,
-      managerIds: []
+      managerIds: [],
+      types: (state.types || []).map(t => ({ ...t }))
     };
     state.classes = [defaultClass];
     state.settings = state.settings || {};
     state.settings.currentClassId = 1;
     console.log('[store] Da tao lop mac dinh tu settings cu');
   }
+  // dam bao moi lop co danh sach loai rieng
+  (state.classes || []).forEach(c => {
+    if (!Array.isArray(c.types) || c.types.length === 0) {
+      c.types = (state.types || []).map(t => ({ ...t }));
+    }
+  });
+  // dong bo db.types theo lop hien tai khi can
   if (state.settings && state.settings.currentClassId == null) {
     state.settings.currentClassId = state.classes.length > 0 ? state.classes[0].id : 1;
   }
+  syncTypesToCurrentClass();
 }
 
 function initFileBackend(defaults) {
@@ -428,6 +437,32 @@ function get() {
   return state;
 }
 
+function currentClass() {
+  const db = state;
+  const id = db.settings && db.settings.currentClassId;
+  return (db.classes || []).find(c => Number(c.id) === Number(id)) || (db.classes || [])[0] || null;
+}
+
+function syncTypesToCurrentClass() {
+  if (!state) return;
+  const c = currentClass();
+  if (!c) return;
+  state.types = (c.types || []).map(t => ({ ...t }));
+}
+
+function syncSettingsToCurrentClass() {
+  if (!state) return;
+  const c = currentClass();
+  if (!c || !state.settings) return;
+  state.settings.schoolYear = c.schoolYear || state.settings.schoolYear;
+  state.settings.className = c.name || state.settings.className;
+  state.settings.grade = c.grade || state.settings.grade;
+  state.settings.weeks = c.weeks || state.settings.weeks;
+  state.settings.startDate = c.startDate || state.settings.startDate;
+  state.settings.baseStudentWeek = c.baseStudentWeek || 0;
+  state.settings.baseClassWeek = c.baseClassWeek || 0;
+}
+
 function scheduleSave() {
   dirty = true;
   clearTimeout(saveTimer);
@@ -555,6 +590,7 @@ module.exports = {
   ensureReady, get, scheduleSave, persistNow, persistIfDirty, isDirty,
   refreshDocIfStale, nextId, nextSeq, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
   useSql, weekInRange, summaryRanges,
+  currentClass, syncTypesToCurrentClass, syncSettingsToCurrentClass,
   laborList, laborGet, laborInsert, laborUpdate, laborDelete,
   cultureList, cultureGet, cultureInsert, cultureUpdate, cultureDelete,
   reviewsList, reviewsFind, reviewsFindMine, reviewsUpsert, removeStudentRatings,

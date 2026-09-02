@@ -222,16 +222,6 @@ function publicClass(c) {
   };
 }
 
-function syncSettingsFromClass(db, c) {
-  db.settings.schoolYear = c.schoolYear || db.settings.schoolYear;
-  db.settings.className = c.name || db.settings.className;
-  db.settings.grade = c.grade || db.settings.grade;
-  db.settings.weeks = c.weeks || db.settings.weeks;
-  db.settings.startDate = c.startDate || db.settings.startDate;
-  db.settings.baseStudentWeek = c.baseStudentWeek || 0;
-  db.settings.baseClassWeek = c.baseClassWeek || 0;
-}
-
 router.get('/classes', requireAuth, requireAdmin, (req, res) => {
   const db = getDb();
   const teacherNames = {};
@@ -257,7 +247,8 @@ router.post('/classes', requireAuth, requireAdmin, (req, res) => {
     startDate: /^\d{4}-\d{2}-\d{2}$/.test(b.startDate || '') ? b.startDate : '',
     baseStudentWeek: num(b.baseStudentWeek, 0, 0),
     baseClassWeek: num(b.baseClassWeek, 0, 0),
-    managerIds: (Array.isArray(b.managerIds) ? b.managerIds : []).map(Number).filter(id => db.users.some(u => u.id === id && u.role === 'teacher'))
+    managerIds: (Array.isArray(b.managerIds) ? b.managerIds : []).map(Number).filter(id => db.users.some(u => u.id === id && u.role === 'teacher')),
+    types: (db.types || []).map(t => ({ ...t }))
   };
   db.classes.push(c);
   if (db.settings && db.settings.currentClassId == null) db.settings.currentClassId = c.id;
@@ -305,7 +296,8 @@ router.delete('/classes/:id', requireAuth, requireAdmin, (req, res) => {
   db.classes.splice(idx, 1);
   if ((db.settings && db.settings.currentClassId) === id) {
     db.settings.currentClassId = db.classes[0].id;
-    syncSettingsFromClass(db, db.classes[0]);
+    store.syncSettingsToCurrentClass();
+    store.syncTypesToCurrentClass();
   }
   store.scheduleSave();
   res.json({ ok: true });
@@ -319,7 +311,8 @@ router.put('/current-class', requireAuth, requireAdmin, (req, res) => {
   if (!c) return res.status(404).json({ error: 'Không tìm thấy lớp' });
   db.settings = db.settings || {};
   db.settings.currentClassId = c.id;
-  syncSettingsFromClass(db, c);
+  store.syncSettingsToCurrentClass();
+  store.syncTypesToCurrentClass();
   store.scheduleSave();
   res.json({ currentClassId: c.id, className: c.name });
 });
@@ -337,6 +330,8 @@ router.post('/types', requireAuth, requireAdmin, (req, res) => {
   if (!(p > 0)) return res.status(400).json({ error: 'Điểm phải > 0' });
   const t = { id: store.nextId('types'), kind, name: String(name).trim(), points: p };
   db.types.push(t);
+  const cls = store.currentClass();
+  if (cls) { (cls.types = cls.types || []).push({ ...t }); }
   store.scheduleSave();
   res.json(t);
 });
@@ -348,6 +343,11 @@ router.put('/types/:id', requireAuth, requireAdmin, (req, res) => {
   const b = req.body || {};
   if (b.name !== undefined) t.name = String(b.name).trim() || t.name;
   if (b.points !== undefined) { const p = Number(b.points); if (p > 0) t.points = p; }
+  const cls = store.currentClass();
+  if (cls) {
+    const ct = (cls.types || []).find(x => x.id === t.id);
+    if (ct) { ct.name = t.name; ct.points = t.points; }
+  }
   store.scheduleSave();
   res.json(t);
 });
@@ -356,6 +356,8 @@ router.delete('/types/:id', requireAuth, requireAdmin, (req, res) => {
   const db = getDb();
   const id = Number(req.params.id);
   db.types = db.types.filter(t => t.id !== id);
+  const cls = store.currentClass();
+  if (cls) cls.types = (cls.types || []).filter(t => t.id !== id);
   store.scheduleSave();
   res.json({ ok: true });
 });

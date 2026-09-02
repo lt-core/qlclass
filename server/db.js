@@ -158,7 +158,15 @@ function defaults() {
     startDate: '2025-09-08',
     baseStudentWeek: 100,
     baseClassWeek: 400,
-    managerIds: []
+    managerIds: [],
+    types: [
+      { id: 1, kind: 'achievement', name: 'Giỏi thi đấu văn nghệ', points: 5 },
+      { id: 2, kind: 'achievement', name: 'Trực tuần tốt', points: 2 },
+      { id: 3, kind: 'achievement', name: 'Đóng góp sách vở', points: 1 },
+      { id: 4, kind: 'violation', name: 'Đi muộn', points: 2 },
+      { id: 5, kind: 'violation', name: 'Không làm bài tập', points: 3 },
+      { id: 6, kind: 'violation', name: 'Nói chuyện trong giờ', points: 1 }
+    ]
   };
 
   return {
