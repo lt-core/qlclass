@@ -124,6 +124,7 @@ function renderClassesTab(body, cls, teachers) {
       } catch (e) { toast(e.message, 'err'); }
     }
   });
+}
 
 
 function renderTypesTab(body, cls) {
