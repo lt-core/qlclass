@@ -78,7 +78,7 @@ function renderClassesTab(body, cls, teachers) {
         <div style="flex:1"><label class="f">Tên lớp</label><input type="text" id="cl-name" value="${esc(cls.name)}"></div>
       </div>
       <div class="row-flex">
-        <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[10, 11, 12].map(k => `<option value="${k}" ${cls.grade === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
+        <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[6, 7, 8, 9, 10, 11, 12].map(k => `<option value="${k}" ${cls.grade === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
         <div style="flex:1"><label class="f">Số tuần năm học</label><input type="number" id="cl-weeks" min="1" max="60" value="${cls.weeks}"></div>
       </div>
       <label class="f">Ngày bắt đầu năm học (tuần 1)</label><input type="date" id="cl-start" value="${cls.startDate}">
@@ -238,7 +238,7 @@ function classModal(item, onDone) {
         <div style="flex:1"><label class="f">Năm học</label><input type="text" id="cl-year" placeholder="VD: 2025-2026" value="${esc(isAdd ? '' : item.schoolYear)}"></div>
       </div>
       <div class="row-flex">
-        <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[10, 11, 12].map(k => `<option value="${k}" ${(isAdd ? 12 : item.grade) === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
+        <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[6, 7, 8, 9, 10, 11, 12].map(k => `<option value="${k}" ${(isAdd ? 12 : item.grade) === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
         <div style="flex:1"><label class="f">Số tuần năm học</label><input type="number" id="cl-weeks" min="1" max="60" value="${isAdd ? 36 : item.weeks}"></div>
       </div>
       <label class="f">Ngày bắt đầu năm học (tuần 1)</label><input type="date" id="cl-start" value="${isAdd ? '' : item.startDate}">
