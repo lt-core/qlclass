@@ -145,13 +145,23 @@ router.post('/auth/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
+function classIdOf(req) {
+  const db = getDb();
+  const sup = req.query && req.query.classId != null ? req.query.classId : (req.body && req.body.classId != null ? req.body.classId : null);
+  const id = sup != null ? Number(sup) : (db.settings && db.settings.currentClassId);
+  const c = (db.classes || []).find(x => Number(x.id) === Number(id));
+  return c ? Number(c.id) : ((db.classes[0] && db.classes[0].id) || null);
+}
+
 function scopeStudents(req) {
   const db = getDb();
-  if (req.user.role === 'teacher') return db.students;
+  const cid = classIdOf(req);
+  const byClass = (list) => (cid == null ? list : list.filter(s => (s.classId === undefined ? true : Number(s.classId) === cid)));
+  if (req.user.role === 'teacher') return byClass(db.students);
   if (req.user.role === 'student') {
-    const meSt = db.students.find(s => s.id === req.user.studentId);
+    const meSt = db.students.find(s => Number(s.id) === Number(req.user.studentId));
     if (!meSt) return [];
-    return db.students.filter(s => s.groupId === meSt.groupId);
+    return byClass(db.students).filter(s => s.groupId === meSt.groupId);
   }
   return [];
 }
@@ -163,21 +173,34 @@ router.get('/bootstrap', requireAuth, (req, res) => {
   if (req.user.role === 'teacher') {
     managedClassIds = classes.filter(c => (c.managerIds || []).includes(req.user.id)).map(c => c.id);
   }
+  const cid = classIdOf(req);
+  const groups = (db.groups || []).filter(g => (g.classId === undefined ? true : Number(g.classId) === cid));
+  const cls = (db.classes || []).find(c => Number(c.id) === cid) || null;
+  const clsSettings = cls ? {
+    className: cls.name,
+    schoolYear: cls.schoolYear,
+    grade: cls.grade,
+    weeks: cls.weeks,
+    startDate: cls.startDate,
+    baseStudentWeek: cls.baseStudentWeek,
+    baseClassWeek: cls.baseClassWeek,
+    currentClassId: cid
+  } : null;
   res.json({
     me: publicUser(req.user),
     student: db.students.find(s => s.id === req.user.studentId) || null,
-    settings: db.settings,
+    settings: clsSettings || db.settings,
     classes: classes,
-    currentClassId: db.settings ? db.settings.currentClassId : null,
+    currentClassId: cid,
     managedClassIds: managedClassIds,
-    groups: db.groups,
-    types: db.types,
+    groups: groups,
+    types: cls && Array.isArray(cls.types) && cls.types.length ? cls.types : db.types,
     currentWeek: currentWeek(),
     permissions: buildPermissions(req),
     counts: {
       teachers: db.users.filter(u => u.role === 'teacher').length,
-      students: db.students.length,
-      groups: db.groups.length,
+      students: (db.students || []).filter(s => s.classId === undefined ? true : Number(s.classId) === cid).length,
+      groups: groups.length,
       types: db.types.length
     }
   });
@@ -269,7 +292,7 @@ router.put('/classes/:id', requireAuth, requireAdmin, (req, res) => {
   if (b.startDate !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.startDate)) c.startDate = b.startDate;
   if (b.baseStudentWeek !== undefined) c.baseStudentWeek = num(b.baseStudentWeek, 0, c.baseStudentWeek);
   if (b.baseClassWeek !== undefined) c.baseClassWeek = num(b.baseClassWeek, 0, c.baseClassWeek);
-  if (db.settings && db.settings.currentClassId === c.id) syncSettingsFromClass(db, c);
+  if (db.settings && db.settings.currentClassId === c.id) store.syncSettingsToCurrentClass();
   store.scheduleSave();
   res.json(publicClass(c));
 });
@@ -294,6 +317,14 @@ router.delete('/classes/:id', requireAuth, requireAdmin, (req, res) => {
   if (idx === -1) return res.status(404).json({ error: 'Không tìm thấy lớp' });
   if (db.classes.length === 1) return res.status(400).json({ error: 'Không thể xóa lớp duy nhất' });
   db.classes.splice(idx, 1);
+  // xoa du lieu thuoc lop nay
+  const cid = id;
+  const keep = (arr, k) => Array.isArray(arr) ? arr.filter(x => (x[k] === undefined ? true : Number(x[k]) !== cid)) : arr;
+  db.students = keep(db.students, 'classId');
+  db.groups = keep(db.groups, 'classId');
+  db.records = keep(db.records, 'classId');
+  db.transactions = keep(db.transactions, 'classId');
+  db.announcements = keep(db.announcements, 'classId');
   if ((db.settings && db.settings.currentClassId) === id) {
     db.settings.currentClassId = db.classes[0].id;
     store.syncSettingsToCurrentClass();
@@ -402,7 +433,9 @@ router.delete('/users/:id', requireAuth, requireAdmin, async (req, res) => {
 });
 
 router.get('/groups', requireAuth, (req, res) => {
-  res.json(getDb().groups);
+  const db = getDb();
+  const cid = classIdOf(req);
+  res.json((db.groups || []).filter(g => g.classId === undefined ? true : Number(g.classId) === cid));
 });
 
 router.post('/groups', requireAuth, requireTeacher, (req, res) => {
@@ -411,7 +444,8 @@ router.post('/groups', requireAuth, requireTeacher, (req, res) => {
   if (!String(name || '').trim()) return res.status(400).json({ error: 'Thiếu tên tổ' });
   const r = Math.min(Math.max(Number(rows) || 2, 1), 10);
   const c = Math.min(Math.max(Number(cols) || 2, 1), 10);
-  const g = { id: store.nextId('groups'), name: String(name).trim(), rows: r, cols: c };
+  const cid = classIdOf(req);
+  const g = { id: store.nextId('groups'), name: String(name).trim(), rows: r, cols: c, classId: cid };
   db.groups.push(g);
   store.scheduleSave();
   res.json(g);
@@ -419,7 +453,8 @@ router.post('/groups', requireAuth, requireTeacher, (req, res) => {
 
 router.put('/groups/:id', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
-  const g = db.groups.find(x => x.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const g = (db.groups || []).find(x => x.id === Number(req.params.id) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!g) return res.status(404).json({ error: 'Không tìm thấy tổ' });
   const b = req.body || {};
   if (b.name !== undefined && String(b.name).trim()) g.name = String(b.name).trim();
@@ -437,19 +472,21 @@ router.put('/groups/:id', requireAuth, requireTeacher, (req, res) => {
 
 router.delete('/groups/:id', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const id = Number(req.params.id);
-  if (db.students.some(s => s.groupId === id)) return res.status(400).json({ error: 'Tổ còn học sinh, hãy chuyển họ sang tổ khác trước' });
-  db.groups = db.groups.filter(g => g.id !== id);
+  if (db.students.some(s => (s.classId === undefined ? true : Number(s.classId) === cid) && s.groupId === id)) return res.status(400).json({ error: 'Tổ còn học sinh, hãy chuyển họ sang tổ khác trước' });
+  db.groups = db.groups.filter(g => g.id !== id && (g.classId === undefined ? true : Number(g.classId) === cid));
   store.scheduleSave();
   res.json({ ok: true });
 });
 
 router.get('/students', requireAuth, (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   if (req.query.all === '1' && req.user.role === 'student') {
     const perms = buildPermissions(req);
     if (perms.manageLabor || perms.manageCulture || perms.manageTreasury || perms.reviewClass || perms.reviewStudy || perms.addRecords) {
-      return res.json(db.students);
+      return res.json((db.students || []).filter(s => s.classId === undefined ? true : Number(s.classId) === cid));
     }
   }
   res.json(scopeStudents(req));
@@ -459,7 +496,8 @@ router.post('/students', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên học sinh' });
-  const g = db.groups.find(x => x.id === Number(b.groupId));
+  const cid = classIdOf(req);
+  const g = (db.groups || []).find(x => x.id === Number(b.groupId) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!g) return res.status(400).json({ error: 'Tổ không tồn tại' });
   const pos = POSITIONS.includes(b.position) ? b.position : 'thanh_vien';
   let row = Number.isInteger(Number(b.row)) ? Number(b.row) : null;
@@ -467,7 +505,7 @@ router.post('/students', requireAuth, requireTeacher, (req, res) => {
   if (row !== null && col !== null) {
     row = row < g.rows ? row : null;
     col = col < g.cols ? col : null;
-    if (row !== null && db.students.some(s => s.groupId === g.id && s.row === row && s.col === col)) { row = null; col = null; }
+    if (row !== null && db.students.some(s => (s.classId === undefined ? true : Number(s.classId) === cid) && s.groupId === g.id && s.row === row && s.col === col)) { row = null; col = null; }
   }
   const st = {
     id: store.nextId('students'),
@@ -476,7 +514,7 @@ router.post('/students', requireAuth, requireTeacher, (req, res) => {
     gender: b.gender === 'Nữ' ? 'Nữ' : 'Nam',
     address: String(b.address || ''),
     photo: String(b.photo || ''),
-    groupId: g.id, row, col, position: pos
+    groupId: g.id, row, col, position: pos, classId: cid
   };
   db.students.push(st);
   store.scheduleSave();
@@ -485,7 +523,8 @@ router.post('/students', requireAuth, requireTeacher, (req, res) => {
 
 router.put('/students/:id', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
-  const st = db.students.find(s => s.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const st = (db.students || []).find(s => s.id === Number(req.params.id) && (s.classId === undefined ? true : Number(s.classId) === cid));
   if (!st) return res.status(404).json({ error: 'Không tìm thấy học sinh' });
   const b = req.body || {};
   if (b.name !== undefined && String(b.name).trim()) st.name = String(b.name).trim();
@@ -495,11 +534,11 @@ router.put('/students/:id', requireAuth, requireTeacher, (req, res) => {
   if (b.photo !== undefined) st.photo = String(b.photo);
   if (b.position !== undefined && POSITIONS.includes(b.position)) {
     st.position = b.position;
-    const clash = db.students.find(o => o.id !== st.id && o.position === b.position && ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy'].includes(b.position));
+    const clash = (db.students || []).find(o => o.id !== st.id && o.position === b.position && ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy'].includes(b.position));
     if (clash) return res.status(400).json({ error: `Chức vụ đã có ${clash.name} giữ` });
   }
   if (b.groupId !== undefined) {
-    const g = db.groups.find(x => x.id === Number(b.groupId));
+    const g = (db.groups || []).find(x => x.id === Number(b.groupId) && (x.classId === undefined ? true : Number(x.classId) === cid));
     if (!g) return res.status(400).json({ error: 'Tổ không tồn tại' });
     if (g.id !== st.groupId) {
       st.groupId = g.id;
@@ -513,14 +552,15 @@ router.put('/students/:id', requireAuth, requireTeacher, (req, res) => {
 
 router.put('/students/:id/seat', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
-  const st = db.students.find(s => s.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const st = (db.students || []).find(s => s.id === Number(req.params.id) && (s.classId === undefined ? true : Number(s.classId) === cid));
   if (!st) return res.status(404).json({ error: 'Không tìm thấy học sinh' });
   const { groupId, row, col } = req.body || {};
-  const g = db.groups.find(x => x.id === Number(groupId));
+  const g = (db.groups || []).find(x => x.id === Number(groupId) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!g) return res.status(400).json({ error: 'Tổ không tồn tại' });
   const r = Number(row), c = Number(col);
   if (!(r >= 0 && r < g.rows && c >= 0 && c < g.cols)) return res.status(400).json({ error: 'Vị trí không hợp lệ' });
-  const occupant = db.students.find(s => s.groupId === g.id && s.row === r && s.col === c && s.id !== st.id);
+  const occupant = (db.students || []).find(s => (s.classId === undefined ? true : Number(s.classId) === cid) && s.groupId === g.id && s.row === r && s.col === c && s.id !== st.id);
   if (occupant) {
     if (st.groupId === g.id && st.row !== null) {
       const oldRow = st.row, oldCol = st.col;
@@ -536,18 +576,20 @@ router.put('/students/:id/seat', requireAuth, requireTeacher, (req, res) => {
 
 router.delete('/students/:id', requireAuth, requireTeacher, async (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const id = Number(req.params.id);
-  db.students = db.students.filter(s => s.id !== id);
+  db.students = db.students.filter(s => !(s.id === id && (s.classId === undefined ? true : Number(s.classId) === cid)));
   db.users = db.users.filter(u => u.studentId !== id);
-  db.records = db.records.filter(r => r.studentId !== id);
-  await store.removeStudentRatings(id);
+  db.records = db.records.filter(r => r.studentId !== id && (r.classId === undefined ? true : Number(r.classId) === cid));
+  await store.removeStudentRatings(id, cid);
   store.scheduleSave();
   res.json({ ok: true });
 });
 
 router.post('/students/:id/account', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
-  const st = db.students.find(s => s.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const st = (db.students || []).find(s => s.id === Number(req.params.id) && (s.classId === undefined ? true : Number(s.classId) === cid));
   if (!st) return res.status(404).json({ error: 'Không tìm thấy học sinh' });
   const { username, password } = req.body || {};
   const un = String(username || '').trim();
@@ -568,7 +610,8 @@ router.get('/records', requireAuth, (req, res) => {
   const db = getDb();
   const { week, status } = req.query;
   const allowed = new Set(scopeStudents(req).map(s => s.id));
-  let list = db.records.slice().reverse();
+  const cid = classIdOf(req);
+  let list = (db.records || []).filter(r => r.classId === undefined ? true : Number(r.classId) === cid).slice().reverse();
   if (req.user.role === 'student') list = list.filter(r => allowed.has(r.studentId));
   if (week) list = list.filter(r => weekInRange(r.week, week));
   if (status) list = list.filter(r => r.status === status);
@@ -583,13 +626,14 @@ router.get('/records', requireAuth, (req, res) => {
 
 router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const b = req.body || {};
-  const st = db.students.find(s => s.id === Number(b.studentId));
+  const st = (db.students || []).find(s => s.id === Number(b.studentId) && (s.classId === undefined ? true : Number(s.classId) === cid));
   const t = db.types.find(x => x.id === Number(b.typeId));
   if (!st) return res.status(400).json({ error: 'Học sinh không hợp lệ' });
   if (!t) return res.status(400).json({ error: 'Loại thành tích/vi phạm không hợp lệ' });
-  const meSt = db.students.find(s => s.id === req.user.studentId);
-  if (st.groupId !== meSt.groupId) return res.status(403).json({ error: 'Chỉ được gửi cho học sinh trong tổ mình' });
+  const meSt = (db.students || []).find(s => s.id === req.user.studentId && (s.classId === undefined ? true : Number(s.classId) === cid));
+  if (!meSt || st.groupId !== meSt.groupId) return res.status(403).json({ error: 'Chỉ được gửi cho học sinh trong tổ mình' });
   const r = {
     id: store.nextId('records'),
     studentId: st.id,
@@ -601,6 +645,7 @@ router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
     createdBy: req.user.id,
     createdByName: req.user.name,
     reviewedBy: null,
+    classId: (st.classId === undefined ? cid : st.classId),
     createdAt: new Date().toISOString()
   };
   db.records.push(r);
@@ -610,7 +655,8 @@ router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
 
 router.put('/records/:id/status', requireAuth, requireTeacher, (req, res) => {
   const db = getDb();
-  const r = db.records.find(x => x.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const r = (db.records || []).find(x => x.id === Number(req.params.id) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!r) return res.status(404).json({ error: 'Không tìm thấy' });
   const { status } = req.body || {};
   if (!['approved', 'rejected', 'pending'].includes(status)) return res.status(400).json({ error: 'Trạng thái không hợp lệ' });
@@ -622,23 +668,26 @@ router.put('/records/:id/status', requireAuth, requireTeacher, (req, res) => {
 
 router.delete('/records/:id', requireAuth, (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const id = Number(req.params.id);
-  const r = db.records.find(x => x.id === id);
+  const r = (db.records || []).find(x => x.id === id && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!r) return res.status(404).json({ error: 'Không tìm thấy' });
   if (req.user.role !== 'teacher' && !(r.createdBy === req.user.id && r.status === 'pending')) {
     return res.status(403).json({ error: 'Không thể xóa bản ghi này' });
   }
-  db.records = db.records.filter(x => x.id !== id);
+  db.records = db.records.filter(x => !(x.id === id && (x.classId === undefined ? true : Number(x.classId) === cid)));
   store.scheduleSave();
   res.json({ ok: true });
 });
 
 router.get('/reviews', requireAuth, async (req, res) => {
-  const list = await store.reviewsList(req.query.week || null);
+  const cid = classIdOf(req);
+  const list = await store.reviewsList(req.query.week || null, cid);
   res.json(list);
 });
 
 router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), async (req, res) => {
+  const cid = classIdOf(req);
   const { week, type, content } = req.body || {};
   if (!['class', 'study'].includes(type)) return res.status(400).json({ error: 'Loại nhận xét không hợp lệ' });
   const w = Number(week) || currentWeek();
@@ -650,14 +699,15 @@ router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), a
     updatedByName: req.user.name,
     updatedAt: new Date().toISOString()
   };
-  const saved = await store.reviewsUpsert(rv);
+  const saved = await store.reviewsUpsert(rv, cid);
   res.json(saved);
 });
 
 router.put('/reviews/mine', requireAuth, requirePos(['to_truong']), async (req, res) => {
+  const cid = classIdOf(req);
   const { week, content } = req.body || {};
   const w = Number(week) || currentWeek();
-  const meSt = getDb().students.find(s => s.id === req.user.studentId);
+  const meSt = (getDb().students || []).find(s => s.id === req.user.studentId && (s.classId === undefined ? true : Number(s.classId) === cid));
   const rv = {
     id: await store.nextSeq('reviews'),
     week: w,
@@ -668,12 +718,13 @@ router.put('/reviews/mine', requireAuth, requirePos(['to_truong']), async (req, 
     uid: req.user.id,
     groupId: meSt && meSt.groupId != null ? Number(meSt.groupId) : null
   };
-  const saved = await store.reviewsUpsert(rv);
+  const saved = await store.reviewsUpsert(rv, cid);
   res.json(saved);
 });
 
 router.get('/labor', requireAuth, async (req, res) => {
-  let list = await store.laborList();
+  const cid = classIdOf(req);
+  let list = await store.laborList(cid);
   list.sort((a, b) => (a.date < b.date ? 1 : -1));
   if (req.query.week) {
     const wq = req.query.week;
@@ -689,6 +740,7 @@ router.get('/labor', requireAuth, async (req, res) => {
 });
 
 router.post('/labor', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
+  const cid = classIdOf(req);
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên buổi lao động' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
@@ -698,26 +750,29 @@ router.post('/labor', requireAuth, requirePos(['pho_lao_dong']), async (req, res
     date: b.date,
     session: ['Sáng', 'Chiều', 'Tối'].includes(b.session) ? b.session : 'Sáng',
     time: String(b.time || ''),
-    ratings: {}
+    ratings: {},
+    classId: cid
   };
   await store.laborInsert(l);
   res.json(l);
 });
 
 router.put('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
+  const cid = classIdOf(req);
   const b = req.body || {};
   const fields = {};
   if (b.name !== undefined && String(b.name).trim()) fields.name = String(b.name).trim();
   if (b.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.date)) fields.date = b.date;
   if (b.session !== undefined && ['Sáng', 'Chiều', 'Tối'].includes(b.session)) fields.session = b.session;
   if (b.time !== undefined) fields.time = String(b.time);
-  const l = await store.laborUpdate(req.params.id, fields);
+  const l = await store.laborUpdate(req.params.id, fields, cid);
   if (!l) return res.status(404).json({ error: 'Không tìm thấy buổi lao động' });
   res.json(l);
 });
 
 router.put('/labor/:id/ratings', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
-  const l = await store.laborGet(Number(req.params.id));
+  const cid = classIdOf(req);
+  const l = await store.laborGet(Number(req.params.id), cid);
   if (!l) return res.status(404).json({ error: 'Không tìm thấy buổi lao động' });
   const { ratings } = req.body || {};
   l.ratings = l.ratings || {};
@@ -727,17 +782,19 @@ router.put('/labor/:id/ratings', requireAuth, requirePos(['pho_lao_dong']), asyn
       else l.ratings[sid] = lv;
     }
   });
-  const updated = await store.laborUpdate(req.params.id, { ratings: l.ratings });
+  const updated = await store.laborUpdate(req.params.id, { ratings: l.ratings }, cid);
   res.json(updated);
 });
 
 router.delete('/labor/:id', requireAuth, requirePos(['pho_lao_dong']), async (req, res) => {
-  await store.laborDelete(req.params.id);
+  const cid = classIdOf(req);
+  await store.laborDelete(req.params.id, cid);
   res.json({ ok: true });
 });
 
 router.get('/culture', requireAuth, async (req, res) => {
-  let list = await store.cultureList();
+  const cid = classIdOf(req);
+  let list = await store.cultureList(cid);
   list.sort((a, b) => (a.date < b.date ? 1 : -1));
   if (req.query.week) {
     const wq = req.query.week;
@@ -753,27 +810,30 @@ router.get('/culture', requireAuth, async (req, res) => {
 });
 
 router.post('/culture', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
+  const cid = classIdOf(req);
   const b = req.body || {};
   if (!String(b.name || '').trim()) return res.status(400).json({ error: 'Thiếu tên hoạt động' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
-  const c = { id: await store.nextSeq('culture'), name: String(b.name).trim(), date: b.date, desc: String(b.desc || ''), ratings: {} };
+  const c = { id: await store.nextSeq('culture'), name: String(b.name).trim(), date: b.date, desc: String(b.desc || ''), ratings: {}, classId: cid };
   await store.cultureInsert(c);
   res.json(c);
 });
 
 router.put('/culture/:id', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
+  const cid = classIdOf(req);
   const b = req.body || {};
   const fields = {};
   if (b.name !== undefined && String(b.name).trim()) fields.name = String(b.name).trim();
   if (b.date !== undefined && /^\d{4}-\d{2}-\d{2}$/.test(b.date)) fields.date = b.date;
   if (b.desc !== undefined) fields.desc = String(b.desc);
-  const c = await store.cultureUpdate(req.params.id, fields);
+  const c = await store.cultureUpdate(req.params.id, fields, cid);
   if (!c) return res.status(404).json({ error: 'Không tìm thấy hoạt động' });
   res.json(c);
 });
 
 router.put('/culture/:id/ratings', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
-  const c = await store.cultureGet(Number(req.params.id));
+  const cid = classIdOf(req);
+  const c = await store.cultureGet(Number(req.params.id), cid);
   if (!c) return res.status(404).json({ error: 'Không tìm thấy hoạt động' });
   const { ratings } = req.body || {};
   c.ratings = c.ratings || {};
@@ -783,29 +843,33 @@ router.put('/culture/:id/ratings', requireAuth, requirePos(['pho_van_the']), asy
       else c.ratings[sid] = lv;
     }
   });
-  const updated = await store.cultureUpdate(req.params.id, { ratings: c.ratings });
+  const updated = await store.cultureUpdate(req.params.id, { ratings: c.ratings }, cid);
   res.json(updated);
 });
 
 router.delete('/culture/:id', requireAuth, requirePos(['pho_van_the']), async (req, res) => {
-  await store.cultureDelete(req.params.id);
+  const cid = classIdOf(req);
+  await store.cultureDelete(req.params.id, cid);
   res.json({ ok: true });
 });
 
 router.get('/transactions', requireAuth, (req, res) => {
   const db = getDb();
-  const list = db.transactions.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
-  res.json({ list, balance: db.transactions.reduce((t, x) => t + Number(x.amount || 0), 0) });
+  const cid = classIdOf(req);
+  const scoped = (db.transactions || []).filter(x => x.classId === undefined ? true : Number(x.classId) === cid);
+  const list = scoped.slice().sort((a, b) => (a.date < b.date ? 1 : -1));
+  res.json({ list, balance: scoped.reduce((t, x) => t + Number(x.amount || 0), 0) });
 });
 
 router.post('/transactions', requireAuth, requirePos(['thu_quy']), (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const b = req.body || {};
   const amount = Number(b.amount);
   if (!isFinite(amount) || amount === 0) return res.status(400).json({ error: 'Số tiền không hợp lệ' });
   if (!String(b.desc || '').trim()) return res.status(400).json({ error: 'Thiếu nội dung chi tiêu' });
   if (!/^\d{4}-\d{2}-\d{2}$/.test(b.date || '')) return res.status(400).json({ error: 'Ngày không hợp lệ' });
-  const t = { id: store.nextId('transactions'), amount: Math.round(amount), desc: String(b.desc).trim(), date: b.date, createdBy: req.user.id };
+  const t = { id: store.nextId('transactions'), amount: Math.round(amount), desc: String(b.desc).trim(), date: b.date, createdBy: req.user.id, classId: cid };
   db.transactions.push(t);
   store.scheduleSave();
   res.json(t);
@@ -813,7 +877,8 @@ router.post('/transactions', requireAuth, requirePos(['thu_quy']), (req, res) =>
 
 router.put('/transactions/:id', requireAuth, requirePos(['thu_quy']), (req, res) => {
   const db = getDb();
-  const t = db.transactions.find(x => x.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const t = (db.transactions || []).find(x => x.id === Number(req.params.id) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!t) return res.status(404).json({ error: 'Không tìm thấy giao dịch' });
   const b = req.body || {};
   if (b.amount !== undefined) { const a = Number(b.amount); if (isFinite(a) && a !== 0) t.amount = Math.round(a); }
@@ -825,15 +890,17 @@ router.put('/transactions/:id', requireAuth, requirePos(['thu_quy']), (req, res)
 
 router.delete('/transactions/:id', requireAuth, requirePos(['thu_quy']), (req, res) => {
   const db = getDb();
-  db.transactions = db.transactions.filter(x => x.id !== Number(req.params.id));
+  const cid = classIdOf(req);
+  db.transactions = (db.transactions || []).filter(x => !(x.id === Number(req.params.id) && (x.classId === undefined ? true : Number(x.classId) === cid)));
   store.scheduleSave();
   res.json({ ok: true });
 });
 
 router.get('/announcements', requireAuth, (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const now = Date.now();
-  let list = db.announcements.slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  let list = (db.announcements || []).filter(a => a.classId === undefined ? true : Number(a.classId) === cid).slice().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
   if (req.query.all !== '1') list = list.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now);
   else db.announcements.forEach(a => {
     if (a.expiresAt && new Date(a.expiresAt).getTime() <= now && !a.expiredSeen) a.expiredSeen = true;
@@ -845,6 +912,7 @@ router.get('/announcements', requireAuth, (req, res) => {
 
 router.post('/announcements', requireAuth, requirePos(['bi_thu', 'pho_bi_thu', 'uy_vien']), (req, res) => {
   const db = getDb();
+  const cid = classIdOf(req);
   const b = req.body || {};
   if (!String(b.title || '').trim()) return res.status(400).json({ error: 'Thiếu tiêu đề' });
   const a = {
@@ -854,7 +922,8 @@ router.post('/announcements', requireAuth, requirePos(['bi_thu', 'pho_bi_thu', '
     audience: ['all', 'students', 'teachers'].includes(b.audience) ? b.audience : 'all',
     expiresAt: b.expiresAt ? new Date(b.expiresAt).toISOString() : null,
     createdBy: req.user.name,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    classId: cid
   };
   db.announcements.push(a);
   store.scheduleSave();
@@ -863,7 +932,8 @@ router.post('/announcements', requireAuth, requirePos(['bi_thu', 'pho_bi_thu', '
 
 router.put('/announcements/:id', requireAuth, requirePos(['bi_thu', 'pho_bi_thu', 'uy_vien']), (req, res) => {
   const db = getDb();
-  const a = db.announcements.find(x => x.id === Number(req.params.id));
+  const cid = classIdOf(req);
+  const a = (db.announcements || []).find(x => x.id === Number(req.params.id) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!a) return res.status(404).json({ error: 'Không tìm thấy thông báo' });
   const b = req.body || {};
   if (b.title !== undefined && String(b.title).trim()) a.title = String(b.title).trim();
@@ -876,15 +946,18 @@ router.put('/announcements/:id', requireAuth, requirePos(['bi_thu', 'pho_bi_thu'
 
 router.delete('/announcements/:id', requireAuth, requirePos(['bi_thu', 'pho_bi_thu', 'uy_vien']), (req, res) => {
   const db = getDb();
-  db.announcements = db.announcements.filter(x => x.id !== Number(req.params.id));
+  const cid = classIdOf(req);
+  db.announcements = (db.announcements || []).filter(x => !(x.id === Number(req.params.id) && (x.classId === undefined ? true : Number(x.classId) === cid)));
   store.scheduleSave();
   res.json({ ok: true });
 });
 
 router.get('/summary', requireAuth, (req, res) => {
   const db = getDb();
-  const baseStu = Number(db.settings.baseStudentWeek) || 0;
-  const baseCls = Number(db.settings.baseClassWeek) || 0;
+  const cid = classIdOf(req);
+  const cls = (db.classes || []).find(c => Number(c.id) === cid) || {};
+  const baseStu = Number(cls.baseStudentWeek != null ? cls.baseStudentWeek : db.settings.baseStudentWeek) || 0;
+  const baseCls = Number(cls.baseClassWeek != null ? cls.baseClassWeek : db.settings.baseClassWeek) || 0;
   if (req.user.role === 'admin') {
     return res.json({
       students: [], groups: [], classTotal: 0,
@@ -894,11 +967,11 @@ router.get('/summary', requireAuth, (req, res) => {
     });
   }
   const weekQ = req.query.week || null;
-  const recs = db.records.filter(r => r.status === 'approved' && weekInRange(r.week, weekQ));
+  const recs = db.records.filter(r => (r.classId === undefined ? true : Number(r.classId) === cid) && r.status === 'approved' && weekInRange(r.week, weekQ));
   const studentsScope = scopeStudents(req);
   const groupsScope = req.user.role === 'student'
     ? db.groups.filter(g => g.id === (studentsScope[0] || {}).groupId)
-    : db.groups;
+    : db.groups.filter(g => g.classId === undefined ? true : Number(g.classId) === cid);
   let netAll = 0;
   const perStudent = studentsScope.map(st => {
     let ach = 0, vio = 0;
@@ -920,7 +993,7 @@ router.get('/summary', requireAuth, (req, res) => {
     classTotal: baseCls + netAll,
     baseStudentWeek: baseStu,
     baseClassWeek: baseCls,
-    pendingCount: req.user.role === 'teacher' ? db.records.filter(r => r.status === 'pending').length : 0
+    pendingCount: req.user.role === 'teacher' ? db.records.filter(r => (r.classId === undefined ? true : Number(r.classId) === cid) && r.status === 'pending').length : 0
   });
 });
 

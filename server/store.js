@@ -115,7 +115,27 @@ function migrateClasses() {
   if (state.settings && state.settings.currentClassId == null) {
     state.settings.currentClassId = state.classes.length > 0 ? state.classes[0].id : 1;
   }
+  state.settings = state.settings || {};
+  if (state.settings.currentClassId == null) state.settings.currentClassId = (state.classes[0] || {}).id || 1;
+  migrateClassData();
   syncTypesToCurrentClass();
+}
+
+/* Gan classId cho du lieu toan cuc cu (migration) vao lop hien tai / lop dau tien */
+function migrateClassData() {
+  if (!state) return;
+  const cid = (state.settings && state.settings.currentClassId) || (state.classes[0] && state.classes[0].id) || 1;
+  const grant = (arr, key) => {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(x => { if (x && x[key] === undefined) x[key] = cid; });
+  };
+  grant(state.students, 'classId');
+  grant(state.groups, 'classId');
+  grant(state.records, 'classId');
+  grant(state.transactions, 'classId');
+  grant(state.announcements, 'classId');
+  // records cuc bo cung co groupId -> dam bao duoc gan classId
+  (state.students || []).forEach(s => { if (s && s.classId === undefined) s.classId = cid; });
 }
 
 function initFileBackend(defaults) {
@@ -240,19 +260,24 @@ async function refreshDocIfStale() {
 async function ensureSqlTables(c) {
   await c.execute(`CREATE TABLE IF NOT EXISTS labor (
     id INTEGER PRIMARY KEY, name TEXT NOT NULL, date TEXT NOT NULL,
-    session TEXT DEFAULT 'Sáng', time TEXT DEFAULT '', ratings TEXT DEFAULT '{}'
+    session TEXT DEFAULT 'Sáng', time TEXT DEFAULT '', ratings TEXT DEFAULT '{}',
+    class_id INTEGER
   )`);
+  try { await c.execute(`ALTER TABLE labor ADD COLUMN class_id INTEGER`); } catch (_) {}
   await c.execute(`CREATE TABLE IF NOT EXISTS culture (
     id INTEGER PRIMARY KEY, name TEXT NOT NULL, date TEXT NOT NULL,
-    desc TEXT DEFAULT '', ratings TEXT DEFAULT '{}'
+    desc TEXT DEFAULT '', ratings TEXT DEFAULT '{}',
+    class_id INTEGER
   )`);
+  try { await c.execute(`ALTER TABLE culture ADD COLUMN class_id INTEGER`); } catch (_) {}
   await c.execute(`CREATE TABLE IF NOT EXISTS reviews (
     id INTEGER PRIMARY KEY, week INTEGER NOT NULL, type TEXT NOT NULL,
     content TEXT DEFAULT '', updated_by_name TEXT DEFAULT '', updated_at TEXT,
-    uid INTEGER, group_id INTEGER
+    uid INTEGER, group_id INTEGER, class_id INTEGER
   )`);
   try { await c.execute(`ALTER TABLE reviews ADD COLUMN uid INTEGER`); } catch (_) {}
   try { await c.execute(`ALTER TABLE reviews ADD COLUMN group_id INTEGER`); } catch (_) {}
+  try { await c.execute(`ALTER TABLE reviews ADD COLUMN class_id INTEGER`); } catch (_) {}
   await c.execute(`CREATE TABLE IF NOT EXISTS seq (
     name TEXT PRIMARY KEY, val INTEGER NOT NULL
   )`);
@@ -265,17 +290,18 @@ async function migrateFromDoc(c) {
   try { doc = JSON.parse(String(rs.rows[0].v)); } catch (_) { return; }
   const cnt = await c.execute('SELECT count(*) AS n FROM labor');
   if (Number(cnt.rows[0].n) > 0) return;
+  const cid = (doc.settings && doc.settings.currentClassId) || ((doc.classes && doc.classes[0] && doc.classes[0].id) || 1);
   for (const l of (doc.labor || [])) {
-    await c.execute({ sql: 'INSERT OR IGNORE INTO labor (id, name, date, session, time, ratings) VALUES (?,?,?,?,?,?)',
-      args: [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {})] });
+    await c.execute({ sql: 'INSERT OR IGNORE INTO labor (id, name, date, session, time, ratings, class_id) VALUES (?,?,?,?,?,?,?)',
+      args: [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {}), cid] });
   }
   for (const cl of (doc.culture || [])) {
-    await c.execute({ sql: 'INSERT OR IGNORE INTO culture (id, name, date, desc, ratings) VALUES (?,?,?,?,?)',
-      args: [cl.id, cl.name, cl.date, cl.desc || '', JSON.stringify(cl.ratings || {})] });
+    await c.execute({ sql: 'INSERT OR IGNORE INTO culture (id, name, date, desc, ratings, class_id) VALUES (?,?,?,?,?,?)',
+      args: [cl.id, cl.name, cl.date, cl.desc || '', JSON.stringify(cl.ratings || {}), cid] });
   }
   for (const rv of (doc.reviews || [])) {
-    await c.execute({ sql: 'INSERT OR IGNORE INTO reviews (id, week, type, content, updated_by_name, updated_at) VALUES (?,?,?,?,?,?)',
-      args: [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null] });
+    await c.execute({ sql: 'INSERT OR IGNORE INTO reviews (id, week, type, content, updated_by_name, updated_at, class_id) VALUES (?,?,?,?,?,?,?)',
+      args: [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null, cid] });
   }
   if (doc.labor && doc.labor.length) {
     doc.labor = [];
@@ -286,133 +312,146 @@ async function migrateFromDoc(c) {
 
 function useSql() { return USE_DB; }
 
-async function laborList() {
-  if (!USE_DB) return get().labor;
-  const rs = await dbExecute('SELECT * FROM labor');
-  return rs.rows.map(r => ({ id: Number(r.id), name: String(r.name), date: String(r.date), session: String(r.session), time: String(r.time), ratings: JSON.parse(String(r.ratings || '{}')) }));
+async function laborList(classId) {
+  const cid = Number(classId);
+  if (!USE_DB) return (get().labor || []).filter(l => (l.classId === undefined ? (cid === (state.settings && state.settings.currentClassId) ? true : false) : Number(l.classId) === cid));
+  const rs = await dbExecute('SELECT * FROM labor WHERE class_id = ?', [cid]);
+  return rs.rows.map(r => ({ id: Number(r.id), name: String(r.name), date: String(r.date), session: String(r.session), time: String(r.time), classId: Number(r.class_id), ratings: JSON.parse(String(r.ratings || '{}')) }));
 }
-async function laborGet(id) {
-  if (!USE_DB) return get().labor.find(x => x.id === Number(id));
+async function laborGet(id, classId) {
+  if (!USE_DB) { const l = get().labor.find(x => x.id === Number(id)); if (l && classId && Number(l.classId) !== Number(classId) && !(l.classId === undefined && Number(classId) === Number(state.settings && state.settings.currentClassId))) return null; return l; }
   const rs = await dbExecute('SELECT * FROM labor WHERE id = ?', [Number(id)]);
   if (!rs.rows.length) return null;
   const r = rs.rows[0];
-  return { id: Number(r.id), name: String(r.name), date: String(r.date), session: String(r.session), time: String(r.time), ratings: JSON.parse(String(r.ratings || '{}')) };
+  return { id: Number(r.id), name: String(r.name), date: String(r.date), session: String(r.session), time: String(r.time), classId: Number(r.class_id), ratings: JSON.parse(String(r.ratings || '{}')) };
 }
 async function laborInsert(l) {
   if (!USE_DB) { get().labor.push(l); scheduleSave(); return l; }
-  await dbExecute('INSERT INTO labor (id, name, date, session, time, ratings) VALUES (?,?,?,?,?,?)',
-    [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {})]);
+  await dbExecute('INSERT INTO labor (id, name, date, session, time, ratings, class_id) VALUES (?,?,?,?,?,?,?)',
+    [l.id, l.name, l.date, l.session || 'Sáng', l.time || '', JSON.stringify(l.ratings || {}), l.classId == null ? null : Number(l.classId)]);
   return l;
 }
-async function laborUpdate(id, fields) {
+async function laborUpdate(id, fields, classId) {
   if (!USE_DB) {
     const l = get().labor.find(x => x.id === Number(id));
     if (l) Object.assign(l, fields);
     scheduleSave();
     return l;
   }
-  const cur = await laborGet(id);
+  const cur = await laborGet(id, classId);
   if (!cur) return null;
   const merged = Object.assign(cur, fields);
   await dbExecute('UPDATE labor SET name=?, date=?, session=?, time=?, ratings=? WHERE id=?',
     [merged.name, merged.date, merged.session, merged.time, JSON.stringify(merged.ratings || {}), Number(id)]);
   return merged;
 }
-async function laborDelete(id) {
-  if (!USE_DB) { get().labor = get().labor.filter(x => x.id !== Number(id)); scheduleSave(); return; }
+async function laborDelete(id, classId) {
+  if (!USE_DB) { const l = get().labor.find(x => x.id === Number(id)); if (l && classId && Number(l.classId) !== Number(classId) && !(l.classId === undefined && Number(classId) === Number(state.settings && state.settings.currentClassId))) return false; get().labor = get().labor.filter(x => x.id !== Number(id)); scheduleSave(); return true; }
+  const curr = await laborGet(id, classId);
+  if (!curr) return false;
   await dbExecute('DELETE FROM labor WHERE id = ?', [Number(id)]);
+  return true;
 }
 
-async function cultureList() {
-  if (!USE_DB) return get().culture;
-  const rs = await dbExecute('SELECT * FROM culture');
-  return rs.rows.map(r => ({ id: Number(r.id), name: String(r.name), date: String(r.date), desc: String(r.desc || ''), ratings: JSON.parse(String(r.ratings || '{}')) }));
+async function cultureList(classId) {
+  const cid = Number(classId);
+  if (!USE_DB) return (get().culture || []).filter(c => (c.classId === undefined ? (cid === (state.settings && state.settings.currentClassId) ? true : false) : Number(c.classId) === cid));
+  const rs = await dbExecute('SELECT * FROM culture WHERE class_id = ?', [cid]);
+  return rs.rows.map(r => ({ id: Number(r.id), name: String(r.name), date: String(r.date), desc: String(r.desc || ''), classId: Number(r.class_id), ratings: JSON.parse(String(r.ratings || '{}')) }));
 }
-async function cultureGet(id) {
-  if (!USE_DB) return get().culture.find(x => x.id === Number(id));
+async function cultureGet(id, classId) {
+  if (!USE_DB) { const c = get().culture.find(x => x.id === Number(id)); if (c && classId && Number(c.classId) !== Number(classId) && !(c.classId === undefined && Number(classId) === Number(state.settings && state.settings.currentClassId))) return null; return c; }
   const rs = await dbExecute('SELECT * FROM culture WHERE id = ?', [Number(id)]);
   if (!rs.rows.length) return null;
   const r = rs.rows[0];
-  return { id: Number(r.id), name: String(r.name), date: String(r.date), desc: String(r.desc || ''), ratings: JSON.parse(String(r.ratings || '{}')) };
+  return { id: Number(r.id), name: String(r.name), date: String(r.date), desc: String(r.desc || ''), classId: Number(r.class_id), ratings: JSON.parse(String(r.ratings || '{}')) };
 }
 async function cultureInsert(c) {
   if (!USE_DB) { get().culture.push(c); scheduleSave(); return c; }
-  await dbExecute('INSERT INTO culture (id, name, date, desc, ratings) VALUES (?,?,?,?,?)',
-    [c.id, c.name, c.date, c.desc || '', JSON.stringify(c.ratings || {})]);
+  await dbExecute('INSERT INTO culture (id, name, date, desc, ratings, class_id) VALUES (?,?,?,?,?,?)',
+    [c.id, c.name, c.date, c.desc || '', JSON.stringify(c.ratings || {}), c.classId == null ? null : Number(c.classId)]);
   return c;
 }
-async function cultureUpdate(id, fields) {
+async function cultureUpdate(id, fields, classId) {
   if (!USE_DB) {
     const c = get().culture.find(x => x.id === Number(id));
     if (c) Object.assign(c, fields);
     scheduleSave();
     return c;
   }
-  const cur = await cultureGet(id);
+  const cur = await cultureGet(id, classId);
   if (!cur) return null;
   const merged = Object.assign(cur, fields);
   await dbExecute('UPDATE culture SET name=?, date=?, desc=?, ratings=? WHERE id=?',
     [merged.name, merged.date, merged.desc, JSON.stringify(merged.ratings || {}), Number(id)]);
   return merged;
 }
-async function cultureDelete(id) {
-  if (!USE_DB) { get().culture = get().culture.filter(x => x.id !== Number(id)); scheduleSave(); return; }
+async function cultureDelete(id, classId) {
+  if (!USE_DB) { const c = get().culture.find(x => x.id === Number(id)); if (c && classId && Number(c.classId) !== Number(classId) && !(c.classId === undefined && Number(classId) === Number(state.settings && state.settings.currentClassId))) return false; get().culture = get().culture.filter(x => x.id !== Number(id)); scheduleSave(); return true; }
+  const curr = await cultureGet(id, classId);
+  if (!curr) return false;
   await dbExecute('DELETE FROM culture WHERE id = ?', [Number(id)]);
+  return true;
 }
 
-async function reviewsList(weekParam) {
+async function reviewsList(weekParam, classId) {
+  const cid = Number(classId);
   if (!USE_DB) {
-    let list = get().reviews;
+    let list = (get().reviews || []).filter(r => r.classId === undefined ? true : Number(r.classId) === cid);
     if (weekParam) list = list.filter(r => weekInRange(r.week, weekParam));
     return list;
   }
-  const rs = await dbExecute('SELECT * FROM reviews');
-  let list = rs.rows.map(r => ({ id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id) }));
+  const rs = await dbExecute('SELECT * FROM reviews WHERE class_id = ?', [cid]);
+  let list = rs.rows.map(r => ({ id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id), classId: Number(r.class_id) }));
   if (weekParam) list = list.filter(r => weekInRange(r.week, weekParam));
   return list;
 }
-async function reviewsFind(week, type) {
-  if (!USE_DB) return get().reviews.find(x => x.week === week && x.type === type);
-  const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND type = ?', [week, type]);
+async function reviewsFind(week, type, classId) {
+  const cid = Number(classId);
+  if (!USE_DB) return (get().reviews || []).find(x => x.week === week && x.type === type && (x.classId === undefined ? true : Number(x.classId) === cid));
+  const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND type = ? AND class_id = ?', [week, type, cid]);
   if (!rs.rows.length) return null;
   const r = rs.rows[0];
-  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id) };
+  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id), classId: Number(r.class_id) };
 }
-async function reviewsFindMine(week, uid) {
-  if (!USE_DB) return get().reviews.find(x => x.week === week && x.uid != null && Number(x.uid) === Number(uid));
-  const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND uid = ?', [week, Number(uid)]);
+async function reviewsFindMine(week, uid, classId) {
+  const cid = Number(classId);
+  if (!USE_DB) return (get().reviews || []).find(x => x.week === week && x.uid != null && Number(x.uid) === Number(uid) && (x.classId === undefined ? true : Number(x.classId) === cid));
+  const rs = await dbExecute('SELECT * FROM reviews WHERE week = ? AND uid = ? AND class_id = ?', [week, Number(uid), cid]);
   if (!rs.rows.length) return null;
   const r = rs.rows[0];
-  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id) };
+  return { id: Number(r.id), week: Number(r.week), type: String(r.type), content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''), updatedAt: r.updated_at, uid: Number(r.uid), groupId: r.group_id == null ? null : Number(r.group_id), classId: Number(r.class_id) };
 }
-async function reviewsUpsert(rv) {
+async function reviewsUpsert(rv, classId) {
+  const cid = Number(classId);
   if (!USE_DB) {
-    const existing = (rv.uid != null ? reviewsFindMine(rv.week, rv.uid) : get().reviews.find(x => x.week === rv.week && x.type === rv.type));
-    if (existing) { Object.assign(existing, rv); scheduleSave(); return existing; }
-    get().reviews.push(rv);
+    const existing = (rv.uid != null ? reviewsFindMine(rv.week, rv.uid, cid) : (get().reviews || []).find(x => x.week === rv.week && x.type === rv.type));
+    if (existing) { Object.assign(existing, rv, { classId: cid }); scheduleSave(); return existing; }
+    get().reviews.push({ ...rv, classId: cid });
     scheduleSave();
     return rv;
   }
-  const existing = rv.uid != null ? await reviewsFindMine(rv.week, rv.uid) : await reviewsFind(rv.week, rv.type);
+  const existing = rv.uid != null ? await reviewsFindMine(rv.week, rv.uid, cid) : await reviewsFind(rv.week, rv.type, cid);
   if (existing) {
     await dbExecute('UPDATE reviews SET content=?, updated_by_name=?, updated_at=?, group_id=? WHERE id=?',
       [rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.groupId == null ? null : Number(rv.groupId), existing.id]);
     return Object.assign({}, existing, rv, { id: existing.id });
   }
-  await dbExecute('INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at, uid, group_id) VALUES (?,?,?,?,?,?,?,?)',
-    [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.uid == null ? null : Number(rv.uid), rv.groupId == null ? null : Number(rv.groupId)]);
+  await dbExecute('INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at, uid, group_id, class_id) VALUES (?,?,?,?,?,?,?,?,?)',
+    [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.uid == null ? null : Number(rv.uid), rv.groupId == null ? null : Number(rv.groupId), cid]);
   return rv;
 }
 
-async function removeStudentRatings(studentId) {
+async function removeStudentRatings(studentId, classId) {
   const sid = String(studentId);
+  const cid = classId == null ? null : Number(classId);
   if (!USE_DB) {
-    get().labor.forEach(l => { if (l.ratings) delete l.ratings[sid]; });
-    get().culture.forEach(c => { if (c.ratings) delete c.ratings[sid]; });
+    (get().labor || []).forEach(l => { if ((!cid || Number(l.classId) === cid || l.classId === undefined) && l.ratings && delete l.ratings[sid]) {} });
+    (get().culture || []).forEach(c => { if ((!cid || Number(c.classId) === cid || c.classId === undefined) && c.ratings && delete c.ratings[sid]) {} });
     scheduleSave();
     return;
   }
-  const lrs = await dbExecute('SELECT id, ratings FROM labor');
+  const lrs = await dbExecute('SELECT id, ratings FROM labor' + (cid != null ? ' WHERE class_id = ' + Number(cid) : ''));
   for (const r of lrs.rows) {
     const ratings = JSON.parse(String(r.ratings || '{}'));
     if (sid in ratings) {
@@ -420,7 +459,7 @@ async function removeStudentRatings(studentId) {
       await dbExecute('UPDATE labor SET ratings = ? WHERE id = ?', [JSON.stringify(ratings), Number(r.id)]);
     }
   }
-  const crs = await dbExecute('SELECT id, ratings FROM culture');
+  const crs = await dbExecute('SELECT id, ratings FROM culture' + (cid != null ? ' WHERE class_id = ' + Number(cid) : ''));
   for (const r of crs.rows) {
     const ratings = JSON.parse(String(r.ratings || '{}'));
     if (sid in ratings) {

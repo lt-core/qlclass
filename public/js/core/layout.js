@@ -191,10 +191,8 @@ export function setBadge(routeName, n) {
 
 async function fetchAnns() {
   try {
-    const res = await fetch('/api/announcements');
-    const data = await res.json();
-    if (!res.ok) throw new Error((data && data.error) || res.status);
-    return data;
+    const { api } = await import('./http.js');
+    return await api('/announcements');
   } catch (_) { return []; }
 }
 

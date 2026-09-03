@@ -82,10 +82,10 @@ function defaults() {
   ];
 
   const groups = [
-    { id: 1, name: 'Tổ 1', rows: 6, cols: 2 },
-    { id: 2, name: 'Tổ 2', rows: 6, cols: 2 },
-    { id: 3, name: 'Tổ 3', rows: 6, cols: 2 },
-    { id: 4, name: 'Tổ 4', rows: 5, cols: 2 }
+    { id: 1, name: 'Tổ 1', rows: 6, cols: 2, classId: 1 },
+    { id: 2, name: 'Tổ 2', rows: 6, cols: 2, classId: 1 },
+    { id: 3, name: 'Tổ 3', rows: 6, cols: 2, classId: 1 },
+    { id: 4, name: 'Tổ 4', rows: 5, cols: 2, classId: 1 }
   ];
   const roster = { 1: T1, 2: T2, 3: T3, 4: T4 };
 
@@ -104,7 +104,8 @@ function defaults() {
         groupId: g.id,
         row,
         col,
-        position
+        position,
+        classId: 1
       });
     }
   }

@@ -22,15 +22,22 @@ export function forceLogin() {
   renderHome();
 }
 
-export function enterApp() {
-  if (!prepareActiveClass()) return;
+export async function enterApp() {
+  const ok = await prepareActiveClass();
+  if (!ok) return;
   renderApp();
   const before = location.hash;
   navigate('dashboard');
   if (location.hash === before) applyRouter();
 }
 
-function prepareActiveClass() {
+async function applyAndRefresh(id) {
+  applyClassSettingsById(id);
+  persistTeacherClass(id);
+  await loadBootstrap();
+}
+
+async function prepareActiveClass() {
   if (S.me.role !== 'teacher') return true;
   const managed = (S.managedClassIds || []).map(Number);
   if (managed.length === 0) {
@@ -39,12 +46,11 @@ function prepareActiveClass() {
   }
   const saved = teacherSavedClassId();
   if (managed.indexOf(saved) > -1) {
-    applyClassSettingsById(saved);
+    await applyAndRefresh(saved);
     return true;
   }
   if (managed.length === 1) {
-    applyClassSettingsById(managed[0]);
-    persistTeacherClass(managed[0]);
+    await applyAndRefresh(managed[0]);
     return true;
   }
   renderClassChooser(managed);
@@ -92,10 +98,9 @@ function renderClassChooser(managedIds) {
         </div>
       </div>
     </div>`;
-  app.querySelectorAll('.class-chooser').forEach(b => b.onclick = () => {
+  app.querySelectorAll('.class-chooser').forEach(b => b.onclick = async () => {
     const id = Number(b.dataset.classId);
-    applyClassSettingsById(id);
-    persistTeacherClass(id);
+    await applyAndRefresh(id);
     renderApp();
     const before = location.hash;
     navigate('dashboard');
@@ -115,7 +120,7 @@ window.addEventListener('hashchange', () => {
 (async function boot() {
   try {
     await loadBootstrap();
-    enterApp();
+    await enterApp();
   } catch (_) {
     renderHome();
   }
