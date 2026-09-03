@@ -64,7 +64,7 @@ function renderClassesTab(body, cls, teachers) {
         <td>${esc(c.schoolYear)}</td>
         <td>Khối ${c.grade}</td>
         <td>${c.weeks} tuần</td>
-        <td>${(c.managers || []).map(m => `<span class="tag">${esc(m.name)}</span>`).join(' ') || '<span class="muted">Chưa có</span>'}</td>
+        <td>${(c.managerIds || []).map(id => { const m = teachers.find(t => t.id === id); return `<span class="tag">${esc(m ? m.name : 'GV')}</span>`; }).join(' ') || '<span class="muted">Chưa có</span>'}</td>
         <td class="actions">
           <button class="btn sm primary" data-cl-activate="${c.id}" ${S.currentClassId === c.id ? 'disabled' : ''}><i class="fa-solid fa-check"></i> Chọn</button>
           <button class="btn sm secondary" data-cl-edit="${c.id}"><i class="fa-solid fa-pen"></i> Sửa</button>
@@ -110,7 +110,7 @@ function renderClassesTab(body, cls, teachers) {
       <h3 style="margin-top:0"><i class="fa-solid fa-users-gear"></i> Giáo viên quản lý — <span class="muted">${esc(cls.name)}</span></h3>
       <div>${teachers.map(t => `
         <label class="chk" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <input type="checkbox" class="mgr-cb" value="${t.id}" ${(cls.managers || []).some(m => m.id === t.id) ? 'checked' : ''}>
+          <input type="checkbox" class="mgr-cb" value="${t.id}" ${(cls.managerIds || []).includes(t.id) ? 'checked' : ''}>
           <span>${esc(t.name)} (${esc(t.username)})</span>
         </label>`).join('') || '<p class="muted">Chưa có giáo viên. Hãy thêm giáo viên ở mục Quản trị → Giáo viên.</p>'}</div>
       <div style="text-align:right;margin-top:12px"><button class="btn" id="mgr-save"><i class="fa-solid fa-floppy-disk"></i> Lưu giáo viên quản lý</button></div>
@@ -148,6 +148,8 @@ function renderClassesTab(body, cls, teachers) {
     const ids = [...body.querySelectorAll('.mgr-cb:checked')].map(cb => Number(cb.value));
     try {
       await api('/classes/' + cls.id + '/managers', { method: 'PUT', body: { managerIds: ids } });
+      const { loadBootstrap } = await import('../core/state.js');
+      await loadBootstrap();
       toast('Đã lưu giáo viên quản lý', 'ok');
       refresh();
     } catch (e) { toast(e.message, 'err'); }
