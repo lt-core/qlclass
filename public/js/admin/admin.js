@@ -24,7 +24,28 @@ async function render(view) {
   const cls = cur();
   view.innerHTML = `
     <h2 class="page-title"><i class="fa-solid fa-gear"></i> Quản trị hệ thống</h2>
-    <p class="page-sub">Chọn lớp để quản lý cài đặt, loại điểm và giáo viên.</p>
+    <div class="subtabs">
+      <button data-atab="classes" class="${activeTab === 'classes' ? 'active' : ''}"><i class="fa-solid fa-school"></i> Lớp học · Năm học</button>
+      <button data-atab="teachers" class="${activeTab === 'teachers' ? 'active' : ''}"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</button>
+    </div>
+    <div id="admin-body">${cls ? '' : '<p class="muted">Chưa có lớp nào.</p>'}</div>`;
+
+  view.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => {
+    activeTab = b.dataset.atab;
+    render(view);
+  });
+
+  const body = document.getElementById('admin-body');
+  if (!cls) return;
+  if (activeTab === 'classes') renderClassesTab(body, cls, teachers);
+  else renderTeachersTab(body, teachers);
+}
+
+function renderClassesTab(body, cls, teachers) {
+  const refresh = () => render(document.getElementById('view'));
+  const ach = (cls.types || []).filter(t => t.kind === 'achievement');
+  const vio = (cls.types || []).filter(t => t.kind === 'violation');
+  body.innerHTML = `
     <div class="card" style="margin-bottom:14px">
       <div class="row-flex" style="align-items:center;gap:12px">
         <div style="display:flex;align-items:center;gap:8px">
@@ -35,35 +56,6 @@ async function render(view) {
         <button class="btn" id="cl-add"><i class="fa-solid fa-plus"></i> Thêm lớp</button>
       </div>
     </div>
-    <div class="subtabs">
-      <button data-atab="classes" class="${activeTab === 'classes' ? 'active' : ''}"><i class="fa-solid fa-school"></i> Lớp học · Năm học</button>
-      <button data-atab="types" class="${activeTab === 'types' ? 'active' : ''}"><i class="fa-solid fa-trophy"></i> Loại điểm</button>
-      <button data-atab="teachers" class="${activeTab === 'teachers' ? 'active' : ''}"><i class="fa-solid fa-chalkboard-user"></i> Giáo viên</button>
-    </div>
-    <div id="admin-body">${cls ? '' : '<p class="muted">Chưa có lớp nào.</p>'}</div>`;
-
-  document.getElementById('admin-class-sel').onchange = async e => {
-    try {
-      await switchClass(e.target.value);
-      render(view);
-    } catch (err) { toast(err.message, 'err'); }
-  };
-  document.getElementById('cl-add').onclick = () => classModal(null, () => render(view));
-  view.querySelectorAll('[data-atab]').forEach(b => b.onclick = () => {
-    activeTab = b.dataset.atab;
-    render(view);
-  });
-
-  const body = document.getElementById('admin-body');
-  if (!cls) return;
-  if (activeTab === 'classes') renderClassesTab(body, cls, teachers);
-  else if (activeTab === 'types') renderTypesTab(body, cls);
-  else renderTeachersTab(body, teachers);
-}
-
-function renderClassesTab(body, cls, teachers) {
-  const refresh = () => render(document.getElementById('view'));
-  body.innerHTML = `
     <div class="card" style="margin-bottom:14px">
       <h3 style="margin-top:0"><i class="fa-solid fa-school"></i> Danh sách lớp</h3>
       <table class="tbl"><thead><tr><th>Tên lớp</th><th>Năm học</th><th>Khối</th><th>Số tuần</th><th>Giáo viên quản lý</th><th class="actions"></th></tr></thead>
@@ -76,42 +68,62 @@ function renderClassesTab(body, cls, teachers) {
         <td class="actions">
           <button class="btn sm primary" data-cl-activate="${c.id}" ${S.currentClassId === c.id ? 'disabled' : ''}><i class="fa-solid fa-check"></i> Chọn</button>
           <button class="btn sm secondary" data-cl-edit="${c.id}"><i class="fa-solid fa-pen"></i> Sửa</button>
-          <button class="btn sm secondary" data-cl-mgr="${c.id}"><i class="fa-solid fa-chalkboard-user"></i> GV</button>
           <button class="btn sm red" data-cl-del="${c.id}"><i class="fa-solid fa-trash-can"></i></button>
         </td></tr>`).join('')}</tbody></table>
     </div>
+    <div class="card">
+      <h3 style="margin-top:0"><i class="fa-solid fa-book"></i> Cài đặt năm học — <span class="muted">${esc(cls.name)}</span></h3>
+      <div class="row-flex">
+        <div style="flex:1"><label class="f">Năm học</label><input type="text" id="cl-year" value="${esc(cls.schoolYear)}"></div>
+        <div style="flex:1"><label class="f">Tên lớp</label><input type="text" id="cl-name" value="${esc(cls.name)}"></div>
+      </div>
+      <div class="row-flex">
+        <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[10, 11, 12].map(k => `<option value="${k}" ${cls.grade === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
+        <div style="flex:1"><label class="f">Số tuần năm học</label><input type="number" id="cl-weeks" min="1" max="60" value="${cls.weeks}"></div>
+      </div>
+      <label class="f">Ngày bắt đầu năm học (tuần 1)</label><input type="date" id="cl-start" value="${cls.startDate}">
+      <div class="row-flex">
+        <div style="flex:1"><label class="f">Điểm mặc định/tuần — học sinh</label><input type="number" id="cl-basestu" min="0" value="${cls.baseStudentWeek}"></div>
+        <div style="flex:1"><label class="f">Điểm mặc định/tuần — cả lớp</label><input type="number" id="cl-basecls" min="0" value="${cls.baseClassWeek}"></div>
+      </div>
+      <div style="text-align:right;margin-top:12px"><button class="btn" id="cl-save"><i class="fa-solid fa-floppy-disk"></i> Lưu cài đặt lớp</button></div>
+    </div>
+    <h3 style="margin-top:18px"><i class="fa-solid fa-trophy"></i> Loại điểm — <span class="muted">${esc(cls.name)}</span></h3>
+    <p class="muted" style="margin-top:0">Các loại thành tích/vi phạm dưới đây thuộc riêng lớp <b>${esc(cls.name)}</b> (${esc(cls.schoolYear)}).</p>
     <div class="grid2">
       <div class="card">
-        <h3 style="margin-top:0"><i class="fa-solid fa-book"></i> Cài đặt năm học — <span class="muted">${esc(cls.name)}</span></h3>
-        <div class="row-flex">
-          <div style="flex:1"><label class="f">Năm học</label><input type="text" id="cl-year" value="${esc(cls.schoolYear)}"></div>
-          <div style="flex:1"><label class="f">Tên lớp</label><input type="text" id="cl-name" value="${esc(cls.name)}"></div>
-        </div>
-        <div class="row-flex">
-          <div style="flex:1"><label class="f">Khối</label><select id="cl-grade">${[10, 11, 12].map(k => `<option value="${k}" ${cls.grade === k ? 'selected' : ''}>Khối ${k}</option>`).join('')}</select></div>
-          <div style="flex:1"><label class="f">Số tuần năm học</label><input type="number" id="cl-weeks" min="1" max="60" value="${cls.weeks}"></div>
-        </div>
-        <label class="f">Ngày bắt đầu năm học (tuần 1)</label><input type="date" id="cl-start" value="${cls.startDate}">
-        <div class="row-flex">
-          <div style="flex:1"><label class="f">Điểm mặc định/tuần — học sinh</label><input type="number" id="cl-basestu" min="0" value="${cls.baseStudentWeek}"></div>
-          <div style="flex:1"><label class="f">Điểm mặc định/tuần — cả lớp</label><input type="number" id="cl-basecls" min="0" value="${cls.baseClassWeek}"></div>
-        </div>
-        <div style="text-align:right;margin-top:12px"><button class="btn" id="cl-save"><i class="fa-solid fa-floppy-disk"></i> Lưu cài đặt lớp</button></div>
+        <h3 style="margin-top:0"><i class="fa-solid fa-trophy"></i> Loại thành tích (điểm cộng)</h3>
+        <div style="margin-bottom:10px"><button class="btn green" data-type-add="achievement"><i class="fa-solid fa-plus"></i> Thêm loại thành tích</button></div>
+        <table class="tbl"><thead><tr><th>Tên</th><th>Điểm cộng</th><th class="actions"></th></tr></thead>
+        <tbody>${ach.map(t => `<tr><td>${esc(t.name)}</td><td><b>+${t.points}</b></td>
+          <td class="actions"><button class="btn sm secondary" data-type-edit="${t.id}"><i class="fa-solid fa-pen"></i></button> <button class="btn sm red" data-type-del="${t.id}"><i class="fa-solid fa-trash-can"></i></button></td></tr>`).join('') || '<tr><td colspan="3" class="muted">Chưa có loại nào.</td></tr>'}</tbody></table>
       </div>
       <div class="card">
-        <h3 style="margin-top:0"><i class="fa-solid fa-users-gear"></i> Giáo viên quản lý — <span class="muted">${esc(cls.name)}</span></h3>
-        <div style="margin-bottom:10px"><button class="btn" id="mgr-open"><i class="fa-solid fa-chalkboard-user"></i> Chỉnh giáo viên quản lý</button></div>
-        <div>${(cls.managers || []).length
-          ? (cls.managers || []).map(m => `<span class="tag" style="margin:0 4px 6px 0;display:inline-block">${esc(m.name)}</span>`).join('')
-          : '<p class="muted">Chưa có giáo viên quản lý.</p>'}</div>
+        <h3 style="margin-top:0"><i class="fa-solid fa-triangle-exclamation"></i> Loại vi phạm (điểm trừ)</h3>
+        <div style="margin-bottom:10px"><button class="btn red" data-type-add="violation"><i class="fa-solid fa-plus"></i> Thêm loại vi phạm</button></div>
+        <table class="tbl"><thead><tr><th>Tên</th><th>Điểm trừ</th><th class="actions"></th></tr></thead>
+        <tbody>${vio.map(t => `<tr><td>${esc(t.name)}</td><td><b>-${t.points}</b></td>
+          <td class="actions"><button class="btn sm secondary" data-type-edit="${t.id}"><i class="fa-solid fa-pen"></i></button> <button class="btn sm red" data-type-del="${t.id}"><i class="fa-solid fa-trash-can"></i></button></td></tr>`).join('') || '<tr><td colspan="3" class="muted">Chưa có loại nào.</td></tr>'}</tbody></table>
       </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0"><i class="fa-solid fa-users-gear"></i> Giáo viên quản lý — <span class="muted">${esc(cls.name)}</span></h3>
+      <div>${teachers.map(t => `
+        <label class="chk" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <input type="checkbox" class="mgr-cb" value="${t.id}" ${(cls.managers || []).some(m => m.id === t.id) ? 'checked' : ''}>
+          <span>${esc(t.name)} (${esc(t.username)})</span>
+        </label>`).join('') || '<p class="muted">Chưa có giáo viên. Hãy thêm giáo viên ở mục Quản trị → Giáo viên.</p>'}</div>
+      <div style="text-align:right;margin-top:12px"><button class="btn" id="mgr-save"><i class="fa-solid fa-floppy-disk"></i> Lưu giáo viên quản lý</button></div>
     </div>`;
 
+  document.getElementById('admin-class-sel').onchange = async e => {
+    try { await switchClass(e.target.value); refresh(); } catch (err) { toast(err.message, 'err'); }
+  };
+  document.getElementById('cl-add').onclick = () => classModal(null, refresh);
   body.querySelectorAll('[data-cl-activate]').forEach(b => b.onclick = async () => {
     try { await switchClass(b.dataset.clActivate); toast('Đã chuyển lớp', 'ok'); refresh(); } catch (e) { toast(e.message, 'err'); }
   });
   body.querySelectorAll('[data-cl-edit]').forEach(b => b.onclick = () => classModal(S.classes.find(c => c.id === Number(b.dataset.clEdit)), refresh));
-  body.querySelectorAll('[data-cl-mgr]').forEach(b => b.onclick = () => managerModal(S.classes.find(c => c.id === Number(b.dataset.clMgr)), refresh, teachers));
   body.querySelectorAll('[data-cl-del]').forEach(b => b.onclick = async () => {
     const c = S.classes.find(x => x.id === Number(b.dataset.clDel));
     if (!c) return;
@@ -124,40 +136,22 @@ function renderClassesTab(body, cls, teachers) {
       } catch (e) { toast(e.message, 'err'); }
     }
   });
-}
-
-
-function renderTypesTab(body, cls) {
-  const ach = (cls.types || []).filter(t => t.kind === 'achievement');
-  const vio = (cls.types || []).filter(t => t.kind === 'violation');
-  body.innerHTML = `
-    <p class="muted" style="margin-top:0">Các loại thành tích/vi phạm dưới đây thuộc riêng lớp <b>${esc(cls.name)}</b> (${esc(cls.schoolYear)}).</p>
-    <div class="grid2">
-      <div class="card">
-        <h3 style="margin-top:0"><i class="fa-solid fa-trophy"></i> Loại thành tích (điểm cộng) — <span class="muted">${esc(cls.name)}</span></h3>
-        <div style="margin-bottom:10px"><button class="btn green" data-type-add="achievement"><i class="fa-solid fa-plus"></i> Thêm loại thành tích</button></div>
-        <table class="tbl"><thead><tr><th>Tên</th><th>Điểm cộng</th><th class="actions"></th></tr></thead>
-        <tbody>${ach.map(t => `<tr><td>${esc(t.name)}</td><td><b>+${t.points}</b></td>
-          <td class="actions"><button class="btn sm secondary" data-type-edit="${t.id}"><i class="fa-solid fa-pen"></i></button> <button class="btn sm red" data-type-del="${t.id}"><i class="fa-solid fa-trash-can"></i></button></td></tr>`).join('') || '<tr><td colspan="3" class="muted">Chưa có loại nào.</td></tr>'}</tbody></table>
-      </div>
-      <div class="card">
-        <h3 style="margin-top:0"><i class="fa-solid fa-triangle-exclamation"></i> Loại vi phạm (điểm trừ) — <span class="muted">${esc(cls.name)}</span></h3>
-        <div style="margin-bottom:10px"><button class="btn red" data-type-add="violation"><i class="fa-solid fa-plus"></i> Thêm loại vi phạm</button></div>
-        <table class="tbl"><thead><tr><th>Tên</th><th>Điểm trừ</th><th class="actions"></th></tr></thead>
-        <tbody>${vio.map(t => `<tr><td>${esc(t.name)}</td><td><b>-${t.points}</b></td>
-          <td class="actions"><button class="btn sm secondary" data-type-edit="${t.id}"><i class="fa-solid fa-pen"></i></button> <button class="btn sm red" data-type-del="${t.id}"><i class="fa-solid fa-trash-can"></i></button></td></tr>`).join('') || '<tr><td colspan="3" class="muted">Chưa có loại nào.</td></tr>'}</tbody></table>
-      </div>
-    </div>`;
-
-  const refresh = () => render(document.getElementById('view'));
-  const clsTypes = () => classById(S.currentClassId) || cls;
   body.querySelectorAll('[data-type-add]').forEach(b => b.onclick = () => typeModal(cls, { kind: b.dataset.typeAdd }, refresh));
-  body.querySelectorAll('[data-type-edit]').forEach(b => b.onclick = () => typeModal(cls, clsTypes().types.find(t => t.id === Number(b.dataset.typeEdit)), refresh));
+  body.querySelectorAll('[data-type-edit]').forEach(b => b.onclick = () => typeModal(cls, cls.types.find(t => t.id === Number(b.dataset.typeEdit)), refresh));
   body.querySelectorAll('[data-type-del]').forEach(b => b.onclick = async () => {
     if (await confirmDlg('Xóa loại này? Các bản ghi cũ sẽ mất tham chiếu tên.')) {
       try { await api('/types/' + b.dataset.typeDel, { method: 'DELETE' }); await switchClass(cls.id); toast('Đã xóa', 'ok'); refresh(); } catch (e) { toast(e.message, 'err'); }
     }
   });
+
+  document.getElementById('mgr-save').onclick = async () => {
+    const ids = [...body.querySelectorAll('.mgr-cb:checked')].map(cb => Number(cb.value));
+    try {
+      await api('/classes/' + cls.id + '/managers', { method: 'PUT', body: { managerIds: ids } });
+      toast('Đã lưu giáo viên quản lý', 'ok');
+      refresh();
+    } catch (e) { toast(e.message, 'err'); }
+  };
 }
 
 function typeModal(cls, item, onDone) {
@@ -272,32 +266,6 @@ function classModal(item, onDone) {
       if (isAdd) await api('/classes', { method: 'POST', body });
       else await api('/classes/' + item.id, { method: 'PUT', body });
       toast('Đã lưu lớp', 'ok');
-      m.close();
-      onDone();
-    } catch (e) { toast(e.message, 'err'); }
-  };
-}
-
-function managerModal(cls, onDone, teachers) {
-  const m = openModal({
-    title: `Giáo viên quản lý — ${esc(cls.name)}`,
-    body: `
-      <p class="page-sub" style="margin-top:0">Chọn giáo viên quản lý lớp này (có thể chọn nhiều).</p>
-      ${teachers.map(t => `
-        <label class="chk" style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-          <input type="checkbox" class="mgr-cb" value="${t.id}" ${(cls.managers || []).some(m => m.id === t.id) ? 'checked' : ''}>
-          <span>${esc(t.name)} (${esc(t.username)})</span>
-        </label>`).join('') || '<p class="muted">Chưa có giáo viên. Hãy thêm giáo viên trước.</p>'}
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
-        <button class="btn secondary" id="mgr-cancel">Hủy</button>
-        <button class="btn" id="mgr-save">Lưu</button></div>`
-  });
-  m.el.querySelector('#mgr-cancel').onclick = m.close;
-  m.el.querySelector('#mgr-save').onclick = async () => {
-    const ids = [...m.el.querySelectorAll('.mgr-cb:checked')].map(cb => Number(cb.value));
-    try {
-      await api('/classes/' + cls.id + '/managers', { method: 'PUT', body: { managerIds: ids } });
-      toast('Đã lưu giáo viên quản lý', 'ok');
       m.close();
       onDone();
     } catch (e) { toast(e.message, 'err'); }
