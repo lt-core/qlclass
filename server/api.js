@@ -46,16 +46,32 @@ function requireTeacher(req, res, next) {
   next();
 }
 
+function positionsOf(st) {
+  if (!st) return [];
+  if (Array.isArray(st.positions) && st.positions.length) return st.positions;
+  if (st.position) return [st.position];
+  return [];
+}
+
+function normalizePositions(input) {
+  if (Array.isArray(input)) {
+    const arr = [...new Set(input.map(p => String(p)).filter(p => POSITIONS.includes(p)))];
+    return arr.length ? arr : ['thanh_vien'];
+  }
+  const pos = POSITIONS.includes(input) ? input : 'thanh_vien';
+  return [pos];
+}
+
 function myPosition(req) {
   if (req.user.role !== 'student') return null;
   const st = getDb().students.find(s => s.id === req.user.studentId);
-  return st ? st.position : null;
+  return positionsOf(st);
 }
 
 function requirePos(list) {
   return (req, res, next) => {
     const pos = myPosition(req);
-    if (!pos || !list.includes(pos)) return res.status(403).json({ error: 'Chức vụ của bạn không có quyền này' });
+    if (!pos || !pos.some(p => list.includes(p))) return res.status(403).json({ error: 'Chức vụ của bạn không có quyền này' });
     next();
   };
 }
@@ -77,7 +93,8 @@ function publicUser(u) {
 }
 
 function buildPermissions(req) {
-  const pos = myPosition(req);
+  const pos = myPosition(req) || [];
+  const has = p => pos.includes(p);
   const r = req.user.role;
   return {
     admin: r === 'admin',
@@ -89,15 +106,15 @@ function buildPermissions(req) {
     manageGroups: r === 'teacher',
     manageStudents: r === 'teacher',
     approveRecords: r === 'teacher',
-    addRecords: pos === 'to_truong',
-    reviewClass: pos === 'lop_truong',
-    reviewStudy: pos === 'pho_hoc_tap',
-    reviewLeader: pos === 'to_truong',
-    manageLabor: pos === 'pho_lao_dong',
-    manageCulture: pos === 'pho_van_the',
-    manageTreasury: pos === 'thu_quy',
-    manageAnnouncements: ['bi_thu', 'pho_bi_thu', 'uy_vien'].includes(pos),
-    position: pos
+    addRecords: has('to_truong'),
+    reviewClass: has('lop_truong'),
+    reviewStudy: has('pho_hoc_tap'),
+    reviewLeader: has('to_truong'),
+    manageLabor: has('pho_lao_dong'),
+    manageCulture: has('pho_van_the'),
+    manageTreasury: has('thu_quy'),
+    manageAnnouncements: ['bi_thu', 'pho_bi_thu', 'uy_vien'].some(p => has(p)),
+    positions: pos
   };
 }
 
@@ -499,7 +516,11 @@ router.post('/students', requireAuth, requireTeacher, (req, res) => {
   const cid = classIdOf(req);
   const g = (db.groups || []).find(x => x.id === Number(b.groupId) && (x.classId === undefined ? true : Number(x.classId) === cid));
   if (!g) return res.status(400).json({ error: 'Tổ không tồn tại' });
-  const pos = POSITIONS.includes(b.position) ? b.position : 'thanh_vien';
+  const positions = normalizePositions(b.positions);
+  if (positions.some(p => p !== 'thanh_vien')) {
+    const clash = (db.students || []).find(o => (o.classId === undefined ? true : Number(o.classId) === cid) && positionsOf(o).some(op => op !== 'thanh_vien' && positions.includes(op) && ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy'].includes(op)));
+    if (clash) return res.status(400).json({ error: `Chức vụ đã có ${clash.name} giữ` });
+  }
   let row = Number.isInteger(Number(b.row)) ? Number(b.row) : null;
   let col = Number.isInteger(Number(b.col)) ? Number(b.col) : null;
   if (row !== null && col !== null) {
@@ -514,7 +535,7 @@ router.post('/students', requireAuth, requireTeacher, (req, res) => {
     gender: b.gender === 'Nữ' ? 'Nữ' : 'Nam',
     address: String(b.address || ''),
     photo: String(b.photo || ''),
-    groupId: g.id, row, col, position: pos, classId: cid
+    groupId: g.id, row, col, positions, position: positions[0], classId: cid
   };
   db.students.push(st);
   store.scheduleSave();
@@ -532,10 +553,14 @@ router.put('/students/:id', requireAuth, requireTeacher, (req, res) => {
   if (b.gender !== undefined) st.gender = b.gender === 'Nữ' ? 'Nữ' : 'Nam';
   if (b.address !== undefined) st.address = String(b.address);
   if (b.photo !== undefined) st.photo = String(b.photo);
-  if (b.position !== undefined && POSITIONS.includes(b.position)) {
-    st.position = b.position;
-    const clash = (db.students || []).find(o => o.id !== st.id && o.position === b.position && ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy'].includes(b.position));
-    if (clash) return res.status(400).json({ error: `Chức vụ đã có ${clash.name} giữ` });
+  if (b.positions !== undefined) {
+    const newPositions = normalizePositions(b.positions);
+    if (newPositions.some(p => p !== 'thanh_vien')) {
+      const clash = (db.students || []).find(o => o.id !== st.id && o.positions && o.positions.some(op => op !== 'thanh_vien' && newPositions.includes(op) && ['lop_truong', 'pho_hoc_tap', 'pho_lao_dong', 'pho_van_the', 'thu_quy'].includes(op)));
+      if (clash) return res.status(400).json({ error: `Chức vụ đã có ${clash.name} giữ` });
+    }
+    st.positions = newPositions;
+    st.position = newPositions[0];
   }
   if (b.groupId !== undefined) {
     const g = (db.groups || []).find(x => x.id === Number(b.groupId) && (x.classId === undefined ? true : Number(x.classId) === cid));

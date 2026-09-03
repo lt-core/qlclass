@@ -2,17 +2,27 @@
 import { S, POS_LABEL } from '../core/state.js';
 import { esc, toast, confirmDlg, fmtDate, openModal } from '../core/ui.js';
 import { registerRoute, applyRouter } from '../core/router.js';
+import { dateFieldHTML, mountDateField, parseDateInput } from '../core/dateField.js';
+
+const fmtDobInput = v => {
+  const p = String(v || '').slice(0, 10).split('-');
+  return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : '';
+};
 
 async function render(view) {
   const [groups, students] = await Promise.all([api('/groups'), api('/students')]);
   S.groups = groups;
+  const stPosLabels = st => {
+    const list = (st.positions && st.positions.length) ? st.positions : (st.position ? [st.position] : []);
+    return list.map(p => POS_LABEL[p] || p).join(', ');
+  };
   const unseated = students.filter(s => s.row === null || s.col === null);
 
   const chipHtml = st => `
     <div class="stu-chip${S.selSid === st.id ? ' selected' : ''}" draggable="true" data-sid="${st.id}" title="${esc(st.name)}">
       ${st.photo ? `<img src="${esc(st.photo)}">` : ''}
       <span>${esc(st.name)}</span>
-      ${st.position && st.position !== 'thanh_vien' ? `<span class="pos">${POS_LABEL[st.position]}</span>` : ''}
+      ${stPosLabels(st) && stPosLabels(st) !== 'Thành viên' ? `<span class="pos">${esc(stPosLabels(st))}</span>` : ''}
     </div>`;
 
   const selGid = groups.some(g => g.id === S.selGid) ? S.selGid : (groups[0] ? groups[0].id : null);
@@ -66,7 +76,7 @@ async function render(view) {
         return `<tr>
           <td>${st.photo ? `<img class="photo-prev" src="${esc(st.photo)}">` : '<div class="photo-prev" style="background:#f1f5f9"></div>'}</td>
           <td><b>${esc(st.name)}</b></td><td>${fmtDate(st.dob)}</td><td>${esc(st.gender)}</td>
-          <td><span class="tag ${st.position === 'thanh_vien' ? 'gray' : 'blue'}">${POS_LABEL[st.position]}</span></td>
+          <td><span class="tag ${stPosLabels(st) === 'Thành viên' ? 'gray' : 'blue'}">${esc(stPosLabels(st))}</span></td>
           <td>${esc(g.name || '')}</td><td>${(st.row !== null && st.col !== null) ? `(${st.row + 1},${st.col + 1})` : '—'}</td>
           <td class="muted">${esc(st.address)}</td>
           <td class="actions">
@@ -293,18 +303,21 @@ async function render(view) {
         </div>
         <label class="f">Họ tên</label><input type="text" id="sm-name" value="${esc(item ? item.name : '')}">
         <div class="row-flex">
-          <div style="flex:1"><label class="f">Ngày sinh</label><input type="date" id="sm-dob" value="${item ? item.dob : ''}"></div>
+          <div style="flex:1"><label class="f">Ngày sinh</label>${dateFieldHTML({ value: fmtDobInput(item ? item.dob : '') })}</div>
           <div style="flex:1"><label class="f">Giới tính</label><select id="sm-gender"><option ${item && item.gender === 'Nam' ? 'selected' : ''}>Nam</option><option ${item && item.gender === 'Nữ' ? 'selected' : ''}>Nữ</option></select></div>
         </div>
         <label class="f">Địa chỉ</label><input type="text" id="sm-address" value="${esc(item ? item.address : '')}">
         <div class="row-flex">
           <div style="flex:1"><label class="f">Tổ</label><select id="sm-group">${groups.map(g => `<option value="${g.id}" ${item && item.groupId === g.id ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></div>
-          <div style="flex:1"><label class="f">Chức vụ</label><select id="sm-pos">${Object.entries(POS_LABEL).map(([k, v]) => `<option value="${k}" ${item && item.position === k ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+          <div style="flex:1"><label class="f">Chức vụ</label><div class="pos-cb" style="display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:4px">
+            ${Object.entries(POS_LABEL).filter(([k]) => k !== 'thanh_vien').map(([k, v]) => `<label style="display:inline-flex;align-items:center;gap:4px;font-size:13px;cursor:pointer"><input type="checkbox" name="sm-pos" value="${k}" ${(item && item.positions || (item && [item.position] || [])).includes(k) ? 'checked' : ''}> ${v}</label>`).join('')}
+          </div></div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
           <button class="btn secondary" id="sm-cancel">Hủy</button>
           <button class="btn" id="sm-save">Lưu</button></div>`
     });
+    const dobField = mountDateField(m.el.querySelector('[data-date-field]'));
     m.el.querySelector('#sm-photo').onchange = e => {
       const f = e.target.files[0];
       if (!f) return;
@@ -324,14 +337,16 @@ async function render(view) {
     };
     m.el.querySelector('#sm-cancel').onclick = m.close;
     m.el.querySelector('#sm-save').onclick = async () => {
+      const dob = dobField.parse();
+      if (dob === null) return toast('Ngày sinh không hợp lệ (vd: 05/03/2010)', 'err');
       const body = {
         name: m.el.querySelector('#sm-name').value,
-        dob: m.el.querySelector('#sm-dob').value,
+        dob,
         gender: m.el.querySelector('#sm-gender').value,
         address: m.el.querySelector('#sm-address').value,
         photo: m.el.querySelector('#sm-photo-url').value,
         groupId: Number(m.el.querySelector('#sm-group').value),
-        position: m.el.querySelector('#sm-pos').value
+        positions: [...m.el.querySelectorAll('input[name="sm-pos"]:checked')].map(cb => cb.value)
       };
       try {
         if (item) await api('/students/' + item.id, { method: 'PUT', body });

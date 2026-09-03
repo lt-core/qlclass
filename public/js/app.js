@@ -34,6 +34,7 @@ export async function enterApp() {
 async function applyAndRefresh(id) {
   applyClassSettingsById(id);
   persistTeacherClass(id);
+  S.currentClassId = Number(id);
   await loadBootstrap();
 }
 

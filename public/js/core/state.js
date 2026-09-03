@@ -49,8 +49,27 @@ export function teacherSavedClassId() {
 export const S = {
   me: null, student: null, settings: null, groups: [], types: [], perms: {},
   classes: [], currentClassId: null, managedClassIds: null,
-  week: 1, selSid: null, lifeTab: 'labor', counts: {}
+  week: 1, selSid: null, lifeTab: 'labor', counts: {},
+  positions: [], activePosition: 'thanh_vien'
 };
+
+export function positionsOfUser() {
+  if (S.me && S.me.role !== 'student') return [];
+  const p = (S.student && S.student.positions) || (S.student && S.student.position ? [S.student.position] : []);
+  const list = Array.isArray(p) ? p : [];
+  return list.filter(Boolean);
+}
+
+export function getActiveLabel() {
+  return POS_LABEL[S.activePosition] || POS_LABEL.thanh_vien;
+}
+
+export function setActivePosition(p) {
+  const list = positionsOfUser();
+  const val = list.includes(p) ? p : (list[0] || 'thanh_vien');
+  S.activePosition = val;
+  if (S.me && S.me.role === 'student') localStorage.setItem('qlc_student_pos_' + S.me.id, val);
+}
 
 export async function loadBootstrap() {
   const b = await api('/bootstrap');
@@ -60,6 +79,11 @@ export async function loadBootstrap() {
   S.groups = b.groups;
   S.types = b.types;
   S.perms = b.permissions;
+  S.positions = positionsOfUser();
+  if (S.me && S.me.role === 'student') {
+    const saved = localStorage.getItem('qlc_student_pos_' + S.me.id);
+    S.activePosition = S.positions.includes(saved) ? saved : (S.positions[0] || 'thanh_vien');
+  }
   S.counts = b.counts || {};
   S.classes = b.classes || [];
   S.currentClassId = b.currentClassId;

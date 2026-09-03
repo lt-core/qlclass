@@ -1,4 +1,4 @@
-import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay, applyClassSettingsById, persistTeacherClass } from './state.js';
+import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay, applyClassSettingsById, persistTeacherClass, positionsOfUser, getActiveLabel, setActivePosition } from './state.js';
 import { esc, toast, openModal } from './ui.js';
 import { navLinks, navigate, applyRouter } from './router.js';
 import { enhance, attachDropdown } from './controls.js';
@@ -9,7 +9,7 @@ let lastAnnCount = -1;
 
 export function renderApp() {
   const initials = (S.me.name || S.me.username).split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
-  const roleLabel = S.me.role === 'admin' ? 'Quản trị viên' : S.me.role === 'teacher' ? 'Giáo viên' : esc(POS_LABEL[(S.student || {}).position] || 'Học sinh');
+  const roleLabel = S.me.role === 'admin' ? 'Quản trị viên' : S.me.role === 'teacher' ? 'Giáo viên' : esc(getActiveLabel());
   const myPhoto = (S.student || {}).photo || '';
   const avHtml = cls => myPhoto
     ? `<span class="avatar ${cls}"><img src="${esc(myPhoto)}" alt=""></span>`
@@ -20,6 +20,7 @@ export function renderApp() {
       <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
       <div class="brand"><i class="fa-solid fa-graduation-cap"></i><span class="brand-name">QLClass</span><small>${esc(S.settings.className)} • KH ${esc(S.settings.schoolYear)}</small></div>
       <div class="spacer"></div>
+      ${roleSwitchHtml()}
       ${classSwitchHtml()}
       <div class="weekbox"><span>Tuần</span><select id="week-sel">${weekOptions()}</select></div>
       <div class="udrop bell-wrap">
@@ -111,6 +112,13 @@ export function renderApp() {
       }
     };
   }
+  const roleSel = document.getElementById('role-sel');
+  if (roleSel) {
+    roleSel.onchange = e => {
+      setActivePosition(e.target.value);
+      window.location.reload();
+    };
+  }
   wireNavDrawer();
 }
 
@@ -143,6 +151,14 @@ function closeNavDrawer() {
   document.body.classList.remove('nav-open');
   const toggle = document.getElementById('nav-toggle');
   if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function roleSwitchHtml() {
+  const list = positionsOfUser();
+  if (S.me && S.me.role !== 'student') return '';
+  const meaningful = list.filter(p => p !== 'thanh_vien');
+  if (meaningful.length < 2) return '';
+  return `<div class="weekbox" title="Chọn chức vụ đang quản lý"><span>Chức vụ</span><select id="role-sel">${list.map(p => `<option value="${p}" ${S.activePosition === p ? 'selected' : ''}>${POS_LABEL[p] || p}</option>`).join('')}</select></div>`;
 }
 
 function classSwitchHtml() {

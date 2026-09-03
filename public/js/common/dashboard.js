@@ -1,8 +1,14 @@
 import { api } from '../core/http.js';
-import { S, POS_LABEL, weekDisplay } from '../core/state.js';
+import { S, POS_LABEL, weekDisplay, positionsOfUser } from '../core/state.js';
 import { esc, renderContent, scoreBar } from '../core/ui.js';
 import { registerRoute } from '../core/router.js';
 import { setBadge } from '../core/layout.js';
+
+function positionLabels() {
+  const list = positionsOfUser();
+  if (!list.length) return POS_LABEL.thanh_vien || 'Học sinh';
+  return list.map(p => POS_LABEL[p] || p).join(', ');
+}
 
 async function render(view) {
   const [sum, anns] = await Promise.all([api('/summary'), api('/announcements')]);
@@ -33,7 +39,7 @@ async function render(view) {
         <div style="flex:1">
           <b style="font-size:16px">${esc(S.me.name)}</b>
           <div class="muted" style="margin-top:2px">
-            <i class="fa-solid fa-id-badge"></i> ${esc(POS_LABEL[(S.student || {}).position] || 'Học sinh')}
+            <i class="fa-solid fa-id-badge"></i> ${esc(positionLabels())}
             • <i class="fa-solid fa-users-rectangle"></i> ${esc(myGroup.name || '')}
             • <i class="fa-solid fa-school"></i> Lớp ${esc(S.settings.className)}
           </div>

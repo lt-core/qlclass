@@ -15,7 +15,8 @@ function cur() {
 
 async function switchClass(id) {
   await api('/current-class', { method: 'PUT', body: { id: Number(id) } });
-  const { loadBootstrap } = await import('../core/state.js');
+  const { S, loadBootstrap } = await import('../core/state.js');
+  S.currentClassId = Number(id);
   await loadBootstrap();
 }
 
