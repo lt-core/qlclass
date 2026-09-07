@@ -121,6 +121,26 @@ function renderClassesTab(body, cls, teachers) {
     try { await switchClass(e.target.value); refresh(); } catch (err) { toast(err.message, 'err'); }
   };
   document.getElementById('cl-add').onclick = () => classModal(null, refresh);
+  document.getElementById('cl-save').onclick = async () => {
+    try {
+      await api('/classes/' + cls.id, {
+        method: 'PUT',
+        body: {
+          name: document.getElementById('cl-name').value,
+          schoolYear: document.getElementById('cl-year').value,
+          grade: Number(document.getElementById('cl-grade').value),
+          weeks: Number(document.getElementById('cl-weeks').value),
+          startDate: document.getElementById('cl-start').value,
+          baseStudentWeek: Number(document.getElementById('cl-basestu').value),
+          baseClassWeek: Number(document.getElementById('cl-basecls').value)
+        }
+      });
+      const { loadBootstrap } = await import('../core/state.js');
+      await loadBootstrap();
+      toast('Đã lưu cài đặt lớp', 'ok');
+      refresh();
+    } catch (e) { toast(e.message, 'err'); }
+  };
   body.querySelectorAll('[data-cl-activate]').forEach(b => b.onclick = async () => {
     try { await switchClass(b.dataset.clActivate); toast('Đã chuyển lớp', 'ok'); refresh(); } catch (e) { toast(e.message, 'err'); }
   });
