@@ -830,6 +830,7 @@ table.tbl tbody tr:hover td { background: #f7fbfe; }
 .rc-row { display: flex; align-items: center; gap: 8px; padding: 7px 2px; border-bottom: 1px dashed var(--border); }
 .rc-row:last-child { border-bottom: 0; }
 .rc-row .rc-note { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rc-count { flex: 0 0 80px; }
 #rc-list { max-height: 260px; overflow-y: auto; border: 1px dashed var(--ctrl-border); border-radius: var(--radius); padding: 4px 10px; margin-top: 12px; background: #fbfbfc; }
 
 /* ============================================================
