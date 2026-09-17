@@ -227,6 +227,7 @@ async function initDbBackend(defaults) {
     console.log('[store] Da khoi tao du lieu mac dinh trong DB');
   }
   migrateClasses();
+  await backfillClassIds();
   // chuyen cac token con sot trong document sang bang rieng (lan dau tien)
   const legacy = Object.entries((state && state.tokens) || {});
   if (legacy.length) {
@@ -340,6 +341,25 @@ async function migrateFromDoc(c) {
 }
 
 function useSql() { return USE_DB; }
+
+/* Gan class_id cho cac ban ghi cu (tao truoc khi co cot class_id) */
+async function backfillClassIds() {
+  if (!USE_DB || !state) return;
+  const defId = (state.settings && state.settings.currentClassId)
+    || (state.classes && state.classes[0] && state.classes[0].id) || 1;
+  for (const t of ['labor', 'culture', 'reviews']) {
+    try {
+      const rs = await dbExecute(`SELECT count(*) AS n FROM ${t} WHERE class_id IS NULL`);
+      const n = Number(rs.rows[0].n);
+      if (n > 0) {
+        await dbExecute(`UPDATE ${t} SET class_id = ? WHERE class_id IS NULL`, [Number(defId)]);
+        console.log(`[store] Gan class_id=${defId} cho ${n} ban ghi ${t} cu`);
+      }
+    } catch (e) {
+      console.error(`[store] backfill ${t} loi:`, e.message || e);
+    }
+  }
+}
 
 async function laborList(classId) {
   const cid = Number(classId);
