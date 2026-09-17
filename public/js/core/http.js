@@ -3,7 +3,7 @@ import { showLoading, hideLoading } from './ui.js';
 const NEUTRAL = /^\/(auth|classes|current-class|settings|types|users|upload)/;
 
 export async function api(path, opts = {}) {
-  const o = { headers: {}, ...opts };
+  const o = { headers: {}, silent: false, ...opts };
   if (o.body && typeof o.body !== 'string') {
     o.headers['Content-Type'] = 'application/json';
     o.body = JSON.stringify(o.body);
@@ -16,7 +16,7 @@ export async function api(path, opts = {}) {
       finalPath = path + (path.includes('?') ? '&' : '?') + 'classId=' + cid;
     }
   } catch (_) {}
-  showLoading();
+  if (!o.silent) showLoading();
   try {
     const res = await fetch('/api' + finalPath, o);
     let data = null;
@@ -31,6 +31,6 @@ export async function api(path, opts = {}) {
     }
     return data;
   } finally {
-    hideLoading();
+    if (!o.silent) hideLoading();
   }
 }

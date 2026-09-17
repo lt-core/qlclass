@@ -11,7 +11,7 @@ function positionLabels() {
 }
 
 async function render(view) {
-  const [sum, anns] = await Promise.all([api('/summary'), api('/announcements')]);
+  const [sum, anns] = await Promise.all([api('/summary', { silent: true }), api('/announcements', { silent: true })]);
   setBadge('records', sum.pendingCount || 0);
   let statsHtml = '';
   if (S.perms.isTeacher) {

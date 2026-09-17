@@ -72,7 +72,7 @@ export function setActivePosition(p) {
 }
 
 export async function loadBootstrap() {
-  const b = await api('/bootstrap');
+  const b = await api('/bootstrap', { silent: true });
   S.me = b.me;
   S.student = b.student;
   S.settings = b.settings;

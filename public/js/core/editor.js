@@ -43,15 +43,7 @@ export function createEditor(container, { placeholder = 'Nhập nội dung...', 
   return {
     getHTML: () => quill.root.innerHTML === '<p><br></p>' ? '' : quill.root.innerHTML,
     getRoot: () => quill.root,
-    setContents: (html) => {
-      if (html && html.trim()) {
-        if (html.includes('<') && html.includes('>')) {
-          quill.root.innerHTML = html;
-        } else {
-          quill.root.innerHTML = html;
-        }
-      }
-    },
+    setContents: (html) => { if (html && html.trim()) quill.root.innerHTML = html; },
     enable: () => quill.enable(),
     disable: () => quill.disable(),
     quill

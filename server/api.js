@@ -649,17 +649,16 @@ router.get('/records', requireAuth, (req, res) => {
   })));
 });
 
-router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
+function recordFromInput(req, b) {
   const db = getDb();
   const cid = classIdOf(req);
-  const b = req.body || {};
   const st = (db.students || []).find(s => s.id === Number(b.studentId) && (s.classId === undefined ? true : Number(s.classId) === cid));
   const t = db.types.find(x => x.id === Number(b.typeId));
-  if (!st) return res.status(400).json({ error: 'Học sinh không hợp lệ' });
-  if (!t) return res.status(400).json({ error: 'Loại thành tích/vi phạm không hợp lệ' });
+  if (!st) return { status: 400, error: 'Học sinh không hợp lệ' };
+  if (!t) return { status: 400, error: 'Loại thành tích/vi phạm không hợp lệ' };
   const meSt = (db.students || []).find(s => s.id === req.user.studentId && (s.classId === undefined ? true : Number(s.classId) === cid));
-  if (!meSt || st.groupId !== meSt.groupId) return res.status(403).json({ error: 'Chỉ được gửi cho học sinh trong tổ mình' });
-  const r = {
+  if (!meSt || st.groupId !== meSt.groupId) return { status: 403, error: 'Chỉ được gửi cho học sinh trong tổ mình' };
+  return {
     id: store.nextId('records'),
     studentId: st.id,
     typeId: t.id,
@@ -673,9 +672,48 @@ router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
     classId: (st.classId === undefined ? cid : st.classId),
     createdAt: new Date().toISOString()
   };
-  db.records.push(r);
+}
+
+router.post('/records', requireAuth, requirePos(['to_truong']), (req, res) => {
+  const r = recordFromInput(req, req.body || {});
+  if (r.error) return res.status(r.status).json({ error: r.error });
+  getDb().records.push(r);
   store.scheduleSave();
   res.json(r);
+});
+
+router.post('/records/batch', requireAuth, requirePos(['to_truong']), (req, res) => {
+  const db = getDb();
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
+  if (!items.length) return res.status(400).json({ error: 'Chưa có mục nào để gửi' });
+  const out = [];
+  for (const b of items) {
+    const r = recordFromInput(req, b || {});
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    out.push(r);
+  }
+  db.records.push(...out);
+  store.scheduleSave();
+  res.json(out);
+});
+
+router.put('/records/batch/status', requireAuth, requireTeacher, (req, res) => {
+  const db = getDb();
+  const cid = classIdOf(req);
+  const { ids, status } = req.body || {};
+  if (!['approved', 'rejected'].includes(status)) return res.status(400).json({ error: 'Trạng thái không hợp lệ' });
+  const idSet = new Set(Array.isArray(ids) ? ids.map(Number) : []);
+  let updated = 0;
+  (db.records || []).forEach(r => {
+    if ((r.classId === undefined ? true : Number(r.classId) === cid) && r.status === 'pending' && idSet.has(Number(r.id))) {
+      r.status = status;
+      r.reviewedBy = req.user.name;
+      updated++;
+    }
+  });
+  if (!updated) return res.status(400).json({ error: 'Không có ghi nhận nào để cập nhật' });
+  store.scheduleSave();
+  res.json({ ok: true, updated });
 });
 
 router.put('/records/:id/status', requireAuth, requireTeacher, (req, res) => {

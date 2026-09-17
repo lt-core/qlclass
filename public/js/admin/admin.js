@@ -179,7 +179,7 @@ function renderClassesTab(body, cls, teachers) {
 
 function typeModal(cls, item, onDone) {
   const isAdd = !item || !item.id;
-  const kind = isAdd ? item.kind : item.kind;
+  const kind = item.kind;
   const m = openModal({
     title: isAdd ? (kind === 'achievement' ? 'Thêm loại thành tích' : 'Thêm loại vi phạm') + ` — ${esc(cls.name)}` : 'Sửa loại',
     body: `

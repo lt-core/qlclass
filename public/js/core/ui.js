@@ -13,6 +13,8 @@ export function renderContent(src) {
 
 let _loadingCount = 0;
 let _loadingEl = null;
+let _loadingTimer = null;
+const LOAD_DELAY = 200;
 
 function _ensureLoader() {
   if (_loadingEl) return;
@@ -26,12 +28,20 @@ function _ensureLoader() {
 export function showLoading() {
   _ensureLoader();
   _loadingCount++;
-  if (_loadingCount === 1) _loadingEl.style.display = 'flex';
+  if (_loadingCount === 1) {
+    clearTimeout(_loadingTimer);
+    _loadingTimer = setTimeout(() => {
+      if (_loadingCount > 0) _loadingEl.style.display = 'flex';
+    }, LOAD_DELAY);
+  }
 }
 
 export function hideLoading() {
   _loadingCount = Math.max(0, _loadingCount - 1);
-  if (_loadingCount === 0 && _loadingEl) _loadingEl.style.display = 'none';
+  if (_loadingCount === 0) {
+    clearTimeout(_loadingTimer);
+    if (_loadingEl) _loadingEl.style.display = 'none';
+  }
 }
 
 export function toast(msg, type) {
