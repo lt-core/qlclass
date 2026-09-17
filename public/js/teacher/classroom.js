@@ -74,7 +74,7 @@ async function render(view) {
       <tbody>${students.map(st => {
         const g = groups.find(x => x.id === st.groupId) || {};
         return `<tr>
-          <td>${st.photo ? `<img class="photo-prev" src="${esc(st.photo)}">` : '<div class="photo-prev" style="background:#f1f5f9"></div>'}</td>
+          <td>${st.photo ? `<img class="photo-prev" src="${esc(st.photo)}">` : '<div class="photo-prev" style="background:var(--surface-2)"></div>'}</td>
           <td><b>${esc(st.name)}</b></td><td>${fmtDate(st.dob)}</td><td>${esc(st.gender)}</td>
           <td><span class="tag ${stPosLabels(st) === 'Thành viên' ? 'gray' : 'blue'}">${esc(stPosLabels(st))}</span></td>
           <td>${esc(g.name || '')}</td><td>${(st.row !== null && st.col !== null) ? `(${st.row + 1},${st.col + 1})` : '—'}</td>

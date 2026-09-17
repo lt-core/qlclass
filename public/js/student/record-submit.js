@@ -1,13 +1,12 @@
 import { api } from '../core/http.js';
 import { S } from '../core/state.js';
 import { esc, toast, openModal } from '../core/ui.js';
+import { enhance } from '../core/controls.js';
 
 export function renderSubmitButton(btnEl, onDone) {
-  btnEl.onclick = async () => {
-    const students = await api('/students', { silent: true });
-    const meSt = S.student;
-    const scope = students.filter(s => s.groupId === (meSt || {}).groupId);
-    if (!scope.length) { toast('Không có học sinh nào trong tổ của bạn', 'err'); return; }
+  btnEl.onclick = () => {
+    const meSt = S.student || {};
+    const scope = [];
     const achTypes = S.types.filter(t => t.kind === 'achievement');
     const vioTypes = S.types.filter(t => t.kind === 'violation');
     const typeOpts = t => `<option value="${t.id}">${t.kind === 'achievement' ? '+' : '-'} ${esc(t.name)} (${t.points})</option>`;
@@ -17,25 +16,28 @@ export function renderSubmitButton(btnEl, onDone) {
       title: `Tổ trưởng ghi nhận — Tuần ${S.week}`,
       wide: true,
       body: `
-        <div class="row-flex" style="align-items:end">
-          <div style="flex:1.2"><label class="f">Học sinh</label><select id="rc-student">${scope.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select></div>
-          <div style="flex:1.5"><label class="f">Loại</label><select id="rc-type">
+        <div class="rc-form">
+          <div class="rc-field" style="flex:1.2"><label class="f">Học sinh</label><div id="rc-student-slot"><div class="rc-loading"><i class="fa-solid fa-spinner fa-spin"></i> Đang tải danh sách...</div></div></div>
+          <div class="rc-field" style="flex:1.5"><label class="f">Loại</label><select id="rc-type">
             <optgroup label="Thành tích">${achTypes.map(typeOpts).join('')}</optgroup>
             <optgroup label="Vi phạm">${vioTypes.map(typeOpts).join('')}</optgroup>
           </select></div>
-          <div style="flex:2"><label class="f">Ghi chú</label><input type="text" id="rc-note" placeholder="Mô tả ngắn..."></div>
-          <div class="rc-count"><label class="f">Số lần</label><input type="number" id="rc-count" min="1" max="100" value="1"></div>
-          <button class="btn secondary" id="rc-add"><i class="fa-solid fa-plus"></i> Thêm</button>
+          <div class="rc-field" style="flex:2"><label class="f">Ghi chú</label><input type="text" id="rc-note" placeholder="Mô tả ngắn..."></div>
+          <div class="rc-field rc-count"><label class="f">Số lần</label><input type="number" id="rc-count" min="1" max="100" value="1"></div>
         </div>
+        <div class="rc-add-row"><button class="btn secondary" id="rc-add" disabled><i class="fa-solid fa-plus"></i> Thêm vào danh sách</button></div>
         <div id="rc-list"></div>
         <div class="muted" style="margin-top:6px">Ghi nhận vào <b>Tuần ${S.week}</b> • sẽ ở trạng thái <b>chờ giáo viên duyệt</b>. Có thể thêm trùng loại nhiều lần.</div>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <div class="modal-actions">
           <button class="btn secondary" id="rc-cancel">Hủy</button>
-          <button class="btn" id="rc-send" disabled>Gửi cho giáo viên duyệt</button></div>`
+          <button class="btn" id="rc-send" disabled>Gửi cho giáo viên duyệt</button>
+        </div>`
     });
 
     const listEl = m.el.querySelector('#rc-list');
     const sendBtn = m.el.querySelector('#rc-send');
+    const addBtn = m.el.querySelector('#rc-add');
+    const slot = m.el.querySelector('#rc-student-slot');
 
     const renderDraft = () => {
       listEl.innerHTML = draft.length ? draft.map((d, i) => `
@@ -58,8 +60,8 @@ export function renderSubmitButton(btnEl, onDone) {
     };
     renderDraft();
 
-    m.el.querySelector('#rc-add').onclick = () => {
-      const sid = Number(m.el.querySelector('#rc-student').value);
+    addBtn.onclick = () => {
+      const sid = Number((m.el.querySelector('#rc-student') || {}).value);
       const tid = Number(m.el.querySelector('#rc-type').value);
       const note = m.el.querySelector('#rc-note').value.trim();
       const countEl = m.el.querySelector('#rc-count');
@@ -75,7 +77,7 @@ export function renderSubmitButton(btnEl, onDone) {
       renderDraft();
     };
     m.el.querySelector('#rc-note').addEventListener('keydown', e => {
-      if (e.key === 'Enter') { e.preventDefault(); m.el.querySelector('#rc-add').click(); }
+      if (e.key === 'Enter') { e.preventDefault(); addBtn.click(); }
     });
     m.el.querySelector('#rc-cancel').onclick = m.close;
     sendBtn.onclick = async () => {
@@ -88,5 +90,18 @@ export function renderSubmitButton(btnEl, onDone) {
         onDone();
       } catch (e) { toast(e.message, 'err'); }
     };
+
+    api('/students', { silent: true }).then(students => {
+      scope.push(...(students || []).filter(s => s.groupId === meSt.groupId));
+      if (!scope.length) {
+        slot.innerHTML = '<div class="rc-loading" style="color:var(--red)"><i class="fa-solid fa-triangle-exclamation"></i> Không có học sinh nào trong tổ của bạn</div>';
+        return;
+      }
+      slot.innerHTML = `<select id="rc-student">${scope.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}</select>`;
+      enhance(slot);
+      addBtn.disabled = false;
+    }).catch(e => {
+      slot.innerHTML = `<div class="rc-loading" style="color:var(--red)"><i class="fa-solid fa-triangle-exclamation"></i> ${esc(e.message || 'Không tải được danh sách')}</div>`;
+    });
   };
 }

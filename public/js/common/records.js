@@ -37,10 +37,12 @@ async function render(view) {
   const isSummary = typeof S.week === 'string';
 
   view.innerHTML = `
-    <h2 class="page-title">Thành tích & Vi phạm — ${weekDisplay(S.week)}</h2>
-    <p class="page-sub">${S.perms.isTeacher ? 'Duyệt hoặc từ chối các ghi nhận tổ trưởng gửi.' : S.perms.addRecords ? 'Ghi nhận của tổ trưởng sẽ hiện với trạng thái Chờ duyệt cho đến khi giáo viên duyệt — duyệt rồi mới tính điểm.' : 'Bạn thấy được điểm của mình và các thành viên trong tổ.'}</p>
-    <div style="margin-bottom:14px">
-      ${S.perms.addRecords && !isSummary ? `<button class="btn" id="btn-add-rec"><i class="fa-solid fa-plus"></i> Ghi nhận thành tích/vi phạm</button>` : ''}
+    <div class="page-head">
+      <div>
+        <h2 class="page-title">Thành tích & Vi phạm — ${weekDisplay(S.week)}</h2>
+        <p class="page-sub">${S.perms.isTeacher ? 'Duyệt hoặc từ chối các ghi nhận tổ trưởng gửi.' : S.perms.addRecords ? 'Ghi nhận của tổ trưởng sẽ hiện với trạng thái Chờ duyệt cho đến khi giáo viên duyệt — duyệt rồi mới tính điểm.' : 'Bạn thấy được điểm của mình và các thành viên trong tổ.'}</p>
+      </div>
+      ${S.perms.addRecords && !isSummary ? `<div class="page-head-actions"><button class="btn" id="btn-add-rec"><i class="fa-solid fa-plus"></i> Ghi nhận thành tích/vi phạm</button></div>` : ''}
     </div>
     <div id="pending-zone"></div>
     <div class="card"><h3><i class="fa-solid fa-table-list"></i> Tất cả ghi nhận trong tuần (${recs.length})</h3>

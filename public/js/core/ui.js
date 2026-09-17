@@ -21,7 +21,7 @@ function _ensureLoader() {
   _loadingEl = document.createElement('div');
   _loadingEl.id = 'global-loading';
   _loadingEl.innerHTML = '<div class="loading-spinner"></div>';
-  _loadingEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:99999;background:rgba(255,255,255,.45);backdrop-filter:blur(2px);justify-content:center;align-items:center;pointer-events:all';
+  _loadingEl.style.cssText = 'display:none;position:fixed;inset:0;z-index:99999;background:rgba(19,16,9,.55);backdrop-filter:blur(2px);justify-content:center;align-items:center;pointer-events:all';
   document.body.appendChild(_loadingEl);
 }
 
