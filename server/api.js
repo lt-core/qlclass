@@ -753,6 +753,18 @@ router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), a
   const cid = classIdOf(req);
   const { week, type, content } = req.body || {};
   if (!['class', 'study'].includes(type)) return res.status(400).json({ error: 'Loại nhận xét không hợp lệ' });
+  if (store.isPeriod(week)) {
+    const rv = {
+      id: await store.nextSeq('summaryReviews'),
+      period: String(week),
+      type,
+      content: String(content || ''),
+      updatedByName: req.user.name,
+      updatedAt: new Date().toISOString()
+    };
+    const saved = await store.summaryReviewUpsert(rv, cid);
+    return res.json(saved);
+  }
   const w = Number(week) || currentWeek();
   const rv = {
     id: await store.nextSeq('reviews'),
@@ -769,8 +781,22 @@ router.put('/reviews', requireAuth, requirePos(['lop_truong', 'pho_hoc_tap']), a
 router.put('/reviews/mine', requireAuth, requirePos(['to_truong']), async (req, res) => {
   const cid = classIdOf(req);
   const { week, content } = req.body || {};
-  const w = Number(week) || currentWeek();
   const meSt = (getDb().students || []).find(s => s.id === req.user.studentId && (s.classId === undefined ? true : Number(s.classId) === cid));
+  if (store.isPeriod(week)) {
+    const rv = {
+      id: await store.nextSeq('summaryReviews'),
+      period: String(week),
+      type: 'leader',
+      content: String(content || ''),
+      updatedByName: req.user.name,
+      updatedAt: new Date().toISOString(),
+      uid: req.user.id,
+      groupId: meSt && meSt.groupId != null ? Number(meSt.groupId) : null
+    };
+    const saved = await store.summaryReviewUpsert(rv, cid);
+    return res.json(saved);
+  }
+  const w = Number(week) || currentWeek();
   const rv = {
     id: await store.nextSeq('reviews'),
     week: w,
@@ -1030,6 +1056,9 @@ router.get('/summary', requireAuth, (req, res) => {
     });
   }
   const weekQ = req.query.week || null;
+  const wc = store.weeksCountFor(weekQ);
+  const baseStuW = baseStu * wc;
+  const baseClsW = baseCls * wc;
   const recs = db.records.filter(r => (r.classId === undefined ? true : Number(r.classId) === cid) && r.status === 'approved' && weekInRange(r.week, weekQ));
   const studentsScope = scopeStudents(req);
   const groupsScope = req.user.role === 'student'
@@ -1043,7 +1072,7 @@ router.get('/summary', requireAuth, (req, res) => {
       const p = t ? t.points : 0;
       if (r.kind === 'achievement') { ach += p; netAll += p; } else { vio += p; netAll -= p; }
     });
-    return { id: st.id, name: st.name, groupId: st.groupId, achievement: ach, violation: vio, total: baseStu + ach - vio };
+    return { id: st.id, name: st.name, groupId: st.groupId, achievement: ach, violation: vio, total: baseStuW + ach - vio };
   }).sort((a, b) => b.total - a.total);
   const perGroup = groupsScope.map(g => {
     const members = perStudent.filter(s => s.groupId === g.id);
@@ -1053,9 +1082,10 @@ router.get('/summary', requireAuth, (req, res) => {
   res.json({
     students: perStudent,
     groups: perGroup,
-    classTotal: baseCls + netAll,
-    baseStudentWeek: baseStu,
-    baseClassWeek: baseCls,
+    classTotal: baseClsW + netAll,
+    baseStudentWeek: baseStuW,
+    baseClassWeek: baseClsW,
+    weeksCount: wc,
     pendingCount: req.user.role === 'teacher' ? db.records.filter(r => (r.classId === undefined ? true : Number(r.classId) === cid) && r.status === 'pending').length : 0
   });
 });

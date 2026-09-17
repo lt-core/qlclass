@@ -1,4 +1,5 @@
-import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay, applyClassSettingsById, persistTeacherClass, positionsOfUser, getActiveLabel, setActivePosition } from './state.js';
+import { S, POS_LABEL, WEEK_LABEL, SUMMARY_KEYS, weekDisplay, monthRange, monthsCount, applyClassSettingsById, persistTeacherClass, positionsOfUser, getActiveLabel, setActivePosition } from './state.js';
+import { THEMES, themeId, applyTheme } from './theme.js';
 import { esc, toast, openModal } from './ui.js';
 import { navLinks, navigate, applyRouter } from './router.js';
 import { enhance, attachDropdown } from './controls.js';
@@ -23,6 +24,22 @@ export function renderApp() {
       ${roleSwitchHtml()}
       ${classSwitchHtml()}
       <div class="weekbox"><span>Tuần</span><select id="week-sel">${weekOptions()}</select></div>
+      <div class="udrop theme-wrap">
+        <button type="button" class="ubtn theme-btn" id="theme-btn" title="Giao diện" aria-label="Đổi giao diện">
+          <span class="theme-dot"></span>
+          <i class="fa-solid fa-chevron-down ucaret"></i>
+        </button>
+        <div class="upop theme-pop" id="theme-pop" hidden>
+          <div class="theme-title">Giao diện</div>
+          <div class="theme-grid">
+            ${THEMES.map(t => `<button type="button" class="theme-item ${t.id === themeId() ? 'active' : ''}" data-theme-id="${t.id}">
+              <span class="sw split" style="--sw-a:${t.a};--sw-b:${t.b}"></span>
+              <span>${t.name}</span>
+              <i class="fa-solid fa-check tk"></i>
+            </button>`).join('')}
+          </div>
+        </div>
+      </div>
       <div class="udrop bell-wrap">
         <button type="button" class="ubtn" id="bell-btn" title="Thông báo" aria-label="Thông báo">
           <span class="bell-ic"><i class="fa-regular fa-bell"></i><span class="bell-badge" id="bell-badge" hidden></span></span>
@@ -74,6 +91,17 @@ export function renderApp() {
   if (bellBtn && bellPop) {
     attachDropdown(bellBtn, bellPop, bellBtn.parentNode);
     bellBtn.addEventListener('click', () => { if (!bellPop.hidden) openBellPop(); });
+  }
+  const themeBtn = document.getElementById('theme-btn');
+  const themePop = document.getElementById('theme-pop');
+  if (themeBtn && themePop) {
+    attachDropdown(themeBtn, themePop, themeBtn.parentNode);
+    themePop.querySelectorAll('[data-theme-id]').forEach(item => {
+      item.onclick = () => {
+        applyTheme(item.dataset.themeId);
+        themePop.querySelectorAll('.theme-item').forEach(x => x.classList.toggle('active', x === item));
+      };
+    });
   }
   refreshNotifs();
   startNotifPolling();
@@ -179,19 +207,26 @@ function weekOptions() {
   const total = S.settings.weeks || 36;
   const semLen = Math.floor(total / 2);
   const sel = String(S.week);
+  const monthOpt = (k) => {
+    const { start, end } = monthRange(k, total);
+    return `<option value="m${k}" ${sel === 'm' + k ? 'selected' : ''}>Tháng ${k} (Tuần ${start}–${end})</option>`;
+  };
   let h = `<option value="0" ${sel === '0' ? 'selected' : ''}>Tuần 0 (Chuẩn bị)</option>`;
-  h += `<optgroup label="--- Hoc ky I ---">`;
+  h += `<optgroup label="--- Học kì I ---">`;
   for (let i = 1; i <= semLen; i++) {
     h += `<option value="${i}" ${sel === String(i) ? 'selected' : ''}>Tuần ${i}</option>`;
     if (i === Math.floor(semLen / 2)) h += `<option value="s1mid" ${sel === 's1mid' ? 'selected' : ''}>${WEEK_LABEL.s1mid} (0-${Math.floor(semLen / 2)})</option>`;
+    if (i % 4 === 0) h += monthOpt(i / 4);
   }
   h += `<option value="s1end" ${sel === 's1end' ? 'selected' : ''}>${WEEK_LABEL.s1end} (0-${semLen})</option>`;
   h += `</optgroup>`;
-  h += `<optgroup label="--- Hoc ky II ---">`;
+  h += `<optgroup label="--- Học kì II ---">`;
   for (let i = semLen + 1; i <= total; i++) {
     h += `<option value="${i}" ${sel === String(i) ? 'selected' : ''}>Tuần ${i}</option>`;
     if (i === semLen + Math.floor(semLen / 2)) h += `<option value="s2mid" ${sel === 's2mid' ? 'selected' : ''}>${WEEK_LABEL.s2mid} (${semLen + 1}-${semLen + Math.floor(semLen / 2)})</option>`;
+    if (i % 4 === 0) h += monthOpt(i / 4);
   }
+  if (total % 4 !== 0) h += monthOpt(monthsCount(total));
   h += `<option value="s2end" ${sel === 's2end' ? 'selected' : ''}>${WEEK_LABEL.s2end} (${semLen + 1}-${total})</option>`;
   h += `</optgroup>`;
   h += `<optgroup label="---">`;

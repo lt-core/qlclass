@@ -22,7 +22,7 @@ async function render(view) {
       <div id="rv-show-${type}">
         ${rv && rv.content ? `<div class="md-preview" style="min-height:40px">${renderContent(rv.content)}</div>
         <div class="muted" style="margin-top:6px">Cập nhật: ${esc(rv.updatedByName || '')} • ${new Date(rv.updatedAt).toLocaleString('vi-VN')}</div>`
-      : '<div class="empty">Chưa có nhận xét cho tuần này</div>'}
+      : `<div class="empty">Chưa có nhận xét cho ${isSummary ? 'kỳ này' : 'tuần này'}</div>`}
       </div>
       <div id="rv-edit-${type}" style="display:none">
         <div id="rv-editor-${type}"></div>
@@ -30,7 +30,7 @@ async function render(view) {
           <button class="btn secondary" data-rv-cancel="${type}">Hủy</button>
           <button class="btn" data-rv-save="${type}">Lưu nhận xét</button></div>
       </div>
-      ${canEdit && !isSummary ? `<div style="text-align:right;margin-top:8px"><button class="btn sm secondary" data-rv-edit="${type}"><i class="fa-solid fa-pen"></i> ${rv && rv.content ? 'Sửa' : 'Viết nhận xét'}</button></div>` : ''}
+      ${canEdit ? `<div style="text-align:right;margin-top:8px"><button class="btn sm secondary" data-rv-edit="${type}"><i class="fa-solid fa-pen"></i> ${rv && rv.content ? 'Sửa' : 'Viết nhận xét'}</button></div>` : ''}
     </div>`;
 
   const leaderCol = (g) => {
@@ -50,7 +50,7 @@ async function render(view) {
           <button class="btn secondary" data-rv-cancel="leader-${g.id}">Hủy</button>
           <button class="btn" data-rv-save="leader-${g.id}">Lưu nhận xét</button></div>
       </div>
-      ${isMine && !isSummary ? `<div style="text-align:right;margin-top:8px"><button class="btn sm secondary" data-rv-edit="leader-${g.id}"><i class="fa-solid fa-pen"></i> ${rv && rv.content ? 'Sửa' : 'Viết'} nhận xét của tôi</button></div>` : ''}
+      ${isMine ? `<div style="text-align:right;margin-top:8px"><button class="btn sm secondary" data-rv-edit="leader-${g.id}"><i class="fa-solid fa-pen"></i> ${rv && rv.content ? 'Sửa' : 'Viết'} nhận xét của tôi</button></div>` : ''}
     </div>`;
   };
 
@@ -66,7 +66,7 @@ async function render(view) {
 
   view.innerHTML = `
     <h2 class="page-title">Nhận xét ${weekDisplay(S.week)}</h2>
-    <p class="page-sub">Nhận xét chung của lớp trưởng, lớp phó học tập và từng tổ trưởng vào cuối mỗi tuần.</p>
+    <p class="page-sub">Nhận xét chung của lớp trưởng, lớp phó học tập và từng tổ trưởng vào cuối mỗi ${isSummary ? 'kỳ (tuần/tháng/học kì)' : 'tuần'}.</p>
     <div class="grid2">
       ${card('class', '<i class="fa-solid fa-user-tie"></i> Lớp trưởng', classRv, S.perms.reviewClass)}
       ${card('study', '<i class="fa-solid fa-book-open"></i> Lớp phó học tập', studyRv, S.perms.reviewStudy)}
@@ -101,8 +101,8 @@ async function render(view) {
       const editorContainer = view.querySelector(`#rv-editor-${key}`);
       const editor = createEditor(editorContainer, {
         placeholder: isLeader
-          ? 'Nhận xét của tổ trưởng về tổ mình trong tuần...'
-          : `Nhận xét chung tình hình ${key === 'class' ? 'lớp' : 'học tập'} trong tuần...`,
+          ? `Nhận xét của tổ trưởng về tổ mình trong ${isSummary ? 'kỳ' : 'tuần'}...`
+          : `Nhận xét chung tình hình ${key === 'class' ? 'lớp' : 'học tập'} trong ${isSummary ? 'kỳ' : 'tuần'}...`,
         height: '120px'
       });
       const rv = isLeader ? leaderByGroup[gid] : (key === 'class' ? classRv : studyRv);

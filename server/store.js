@@ -54,13 +54,34 @@ function summaryRanges() {
   const weeks = (state && state.settings && state.settings.weeks) || 36;
   const sem = Math.floor(weeks / 2);
   const mid = Math.floor(sem / 2);
-  return {
+  const out = {
     s1mid: [0, mid],
     s1end: [0, sem],
     s2mid: [sem + 1, sem + mid],
     s2end: [sem + 1, weeks],
     year: [0, weeks]
   };
+  const nMonths = Math.ceil(weeks / 4);
+  for (let k = 1; k <= nMonths; k++) {
+    out['m' + k] = [(k - 1) * 4 + 1, Math.min(k * 4, weeks)];
+  }
+  return out;
+}
+
+/* Mot "moc" (hoc ki / thang) la khoa chuoi co trong summaryRanges */
+function isPeriod(weekParam) {
+  if (typeof weekParam !== 'string' || !weekParam) return false;
+  return Object.prototype.hasOwnProperty.call(summaryRanges(), weekParam);
+}
+
+/* So tuan giang day (>=1) trong mot moc — dung de nhan diem chuan moi tuan */
+function weeksCountFor(weekParam) {
+  if (!weekParam) return 1;
+  const n = Number(weekParam);
+  if (!isNaN(n)) return 1;
+  const range = summaryRanges()[weekParam];
+  if (!range) return 1;
+  return Math.max(0, range[1] - Math.max(1, range[0]) + 1);
 }
 
 function weekInRange(recordWeek, weekParam) {
@@ -278,6 +299,14 @@ async function ensureSqlTables(c) {
   try { await c.execute(`ALTER TABLE reviews ADD COLUMN uid INTEGER`); } catch (_) {}
   try { await c.execute(`ALTER TABLE reviews ADD COLUMN group_id INTEGER`); } catch (_) {}
   try { await c.execute(`ALTER TABLE reviews ADD COLUMN class_id INTEGER`); } catch (_) {}
+  await c.execute(`CREATE TABLE IF NOT EXISTS summary_reviews (
+    id INTEGER PRIMARY KEY, period TEXT NOT NULL, type TEXT NOT NULL,
+    content TEXT DEFAULT '', updated_by_name TEXT DEFAULT '', updated_at TEXT,
+    uid INTEGER, group_id INTEGER, class_id INTEGER
+  )`);
+  try { await c.execute(`ALTER TABLE summary_reviews ADD COLUMN uid INTEGER`); } catch (_) {}
+  try { await c.execute(`ALTER TABLE summary_reviews ADD COLUMN group_id INTEGER`); } catch (_) {}
+  try { await c.execute(`ALTER TABLE summary_reviews ADD COLUMN class_id INTEGER`); } catch (_) {}
   await c.execute(`CREATE TABLE IF NOT EXISTS seq (
     name TEXT PRIMARY KEY, val INTEGER NOT NULL
   )`);
@@ -395,6 +424,7 @@ async function cultureDelete(id, classId) {
 }
 
 async function reviewsList(weekParam, classId) {
+  if (weekParam && isPeriod(weekParam)) return summaryReviewsList(weekParam, classId);
   const cid = Number(classId);
   if (!USE_DB) {
     let list = (get().reviews || []).filter(r => r.classId === undefined ? true : Number(r.classId) === cid);
@@ -439,6 +469,49 @@ async function reviewsUpsert(rv, classId) {
   }
   await dbExecute('INSERT INTO reviews (id, week, type, content, updated_by_name, updated_at, uid, group_id, class_id) VALUES (?,?,?,?,?,?,?,?,?)',
     [rv.id, rv.week, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.uid == null ? null : Number(rv.uid), rv.groupId == null ? null : Number(rv.groupId), cid]);
+  return rv;
+}
+
+function mapSummaryReview(r) {
+  return {
+    id: Number(r.id), period: String(r.period), type: String(r.type),
+    content: String(r.content || ''), updatedByName: String(r.updated_by_name || ''),
+    updatedAt: r.updated_at, uid: r.uid == null ? null : Number(r.uid),
+    groupId: r.group_id == null ? null : Number(r.group_id), classId: Number(r.class_id)
+  };
+}
+async function summaryReviewsList(period, classId) {
+  const cid = Number(classId);
+  if (!USE_DB) return (get().summaryReviews || []).filter(r => r.period === period && (r.classId === undefined ? true : Number(r.classId) === cid));
+  const rs = await dbExecute('SELECT * FROM summary_reviews WHERE period = ? AND class_id = ?', [period, cid]);
+  return rs.rows.map(mapSummaryReview);
+}
+async function summaryReviewFind(period, type, groupId, classId) {
+  const cid = Number(classId);
+  const gid = groupId == null ? null : Number(groupId);
+  if (!USE_DB) return (get().summaryReviews || []).find(r => r.period === period && r.type === type && (r.groupId == null ? gid == null : Number(r.groupId) === gid) && (r.classId === undefined ? true : Number(r.classId) === cid));
+  const rs = await dbExecute('SELECT * FROM summary_reviews WHERE period = ? AND type = ? AND ((group_id IS NULL AND ? IS NULL) OR group_id = ?) AND class_id = ?', [period, type, gid, gid, cid]);
+  if (!rs.rows.length) return null;
+  return mapSummaryReview(rs.rows[0]);
+}
+async function summaryReviewUpsert(rv, classId) {
+  const cid = Number(classId);
+  const gid = rv.groupId == null ? null : Number(rv.groupId);
+  const existing = await summaryReviewFind(rv.period, rv.type, gid, cid);
+  if (!USE_DB) {
+    if (existing) { Object.assign(existing, rv, { classId: cid }); scheduleSave(); return existing; }
+    if (!get().summaryReviews) get().summaryReviews = [];
+    get().summaryReviews.push({ ...rv, classId: cid });
+    scheduleSave();
+    return rv;
+  }
+  if (existing) {
+    await dbExecute('UPDATE summary_reviews SET content=?, updated_by_name=?, updated_at=?, uid=? WHERE id=?',
+      [rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.uid == null ? null : Number(rv.uid), existing.id]);
+    return Object.assign({}, existing, rv, { id: existing.id });
+  }
+  await dbExecute('INSERT INTO summary_reviews (id, period, type, content, updated_by_name, updated_at, uid, group_id, class_id) VALUES (?,?,?,?,?,?,?,?,?)',
+    [rv.id, rv.period, rv.type, rv.content || '', rv.updatedByName || '', rv.updatedAt || null, rv.uid == null ? null : Number(rv.uid), gid, cid]);
   return rv;
 }
 
@@ -531,13 +604,15 @@ async function persistNow() {
 function nextId(collection) {
   const db = state;
   db.counters = db.counters || {};
-  db.counters[collection] = (db.counters[collection] || Math.max(0, ...db[collection].map(x => Number(x.id) || 0))) + 1;
+  const arr = db[collection] || [];
+  db.counters[collection] = (db.counters[collection] || Math.max(0, ...arr.map(x => Number(x.id) || 0))) + 1;
   return db.counters[collection];
 }
 
-const SEQ_TABLES = { reviews: 'reviews', labor: 'labor', culture: 'culture' };
+const SEQ_TABLES = { reviews: 'reviews', labor: 'labor', culture: 'culture', summaryReviews: 'summary_reviews' };
 
 async function nextSeq(collection) {
+  if (!USE_DB) return nextId(collection);
   const tbl = SEQ_TABLES[collection];
   if (!tbl) return nextId(collection);
   const rs = await dbExecute(
@@ -628,10 +703,11 @@ process.on('SIGINT', () => process.exit(0));
 module.exports = {
   ensureReady, get, scheduleSave, persistNow, persistIfDirty, isDirty,
   refreshDocIfStale, nextId, nextSeq, putFile, getFile, setToken, delToken, findUidByToken, delTokensOfUser,
-  useSql, weekInRange, summaryRanges,
+  useSql, weekInRange, summaryRanges, isPeriod, weeksCountFor,
   currentClass, syncTypesToCurrentClass, syncSettingsToCurrentClass,
   laborList, laborGet, laborInsert, laborUpdate, laborDelete,
   cultureList, cultureGet, cultureInsert, cultureUpdate, cultureDelete,
-  reviewsList, reviewsFind, reviewsFindMine, reviewsUpsert, removeStudentRatings,
+  reviewsList, reviewsFind, reviewsFindMine, reviewsUpsert,
+  summaryReviewsList, summaryReviewFind, summaryReviewUpsert, removeStudentRatings,
   get useDb() { return USE_DB; }
 };

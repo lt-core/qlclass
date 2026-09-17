@@ -25,22 +25,21 @@ export function navigate(path) {
 
 export function applyRouter() {
   const view = document.getElementById('view');
-  if (!view || !S.me) return false;
+  if (!view || !S.me) return Promise.resolve(false);
   let p = currentPath();
   const parts = p.split('/').filter(Boolean);
   const name = parts[0] || 'dashboard';
   const def = routes.get(name);
   if (!def || (def.access && !def.access(S.perms))) {
     navigate('dashboard');
-    return false;
+    return Promise.resolve(false);
   }
   const canonical = '#/' + name + (parts.length > 1 ? '/' + parts.slice(1).join('/') : '');
   if (location.hash !== canonical) history.replaceState(null, '', canonical);
   document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('active', a.dataset.route === name));
-  Promise.resolve(def.render(view, parts.slice(1)))
+  return Promise.resolve(def.render(view, parts.slice(1)))
     .then(() => enhance(view))
     .catch(e => {
       import('./ui.js').then(({ toast }) => toast(e.message, 'err'));
     });
-  return true;
 }

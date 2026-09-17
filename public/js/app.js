@@ -8,15 +8,17 @@ import './teacher/classroom.js';
 import './admin/admin.js';
 
 import { S, loadBootstrap, applyClassSettingsById, persistTeacherClass, teacherSavedClassId } from './core/state.js';
-import { esc } from './core/ui.js';
-import { applyRouter, navigate } from './core/router.js';
+import { esc, showLoading, hideLoading } from './core/ui.js';
+import { applyRouter, currentPath } from './core/router.js';
 import { renderApp } from './core/layout.js';
+import { initTheme } from './core/theme.js';
 import { renderLogin } from './login.js';
 import { renderHome } from './home.js';
 
 const BUILD = '20260827x';
 console.log('[QLClass] build ' + BUILD);
 document.title = 'QLClass — Quản lý lớp học (' + BUILD + ')';
+initTheme();
 
 export function forceLogin() {
   renderHome();
@@ -24,11 +26,11 @@ export function forceLogin() {
 
 export async function enterApp() {
   const ok = await prepareActiveClass();
-  if (!ok) return;
+  if (!ok) return false;
   renderApp();
-  const before = location.hash;
-  navigate('dashboard');
-  if (location.hash === before) applyRouter();
+  if (currentPath() !== 'dashboard') history.replaceState(null, '', '#/dashboard');
+  await applyRouter();
+  return true;
 }
 
 async function applyAndRefresh(id) {
@@ -102,10 +104,7 @@ function renderClassChooser(managedIds) {
   app.querySelectorAll('.class-chooser').forEach(b => b.onclick = async () => {
     const id = Number(b.dataset.classId);
     await applyAndRefresh(id);
-    renderApp();
-    const before = location.hash;
-    navigate('dashboard');
-    if (location.hash === before) applyRouter();
+    await enterApp();
   });
   document.getElementById('chooser-logout').onclick = () => {
     import('./core/http.js').then(({ api }) => api('/auth/logout', { method: 'POST' }))
@@ -121,7 +120,12 @@ window.addEventListener('hashchange', () => {
 (async function boot() {
   try {
     await loadBootstrap();
-    await enterApp();
+    showLoading();
+    try {
+      await enterApp();
+    } finally {
+      hideLoading();
+    }
   } catch (_) {
     renderHome();
   }

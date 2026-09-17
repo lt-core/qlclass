@@ -6,11 +6,35 @@ export const POS_LABEL = {
   to_truong: 'Tổ trưởng', bi_thu: 'Bí thư', pho_bi_thu: 'Phó bí thư', uy_vien: 'Ủy viên'
 };
 
-export const WEEK_LABEL = { s1mid: 'Giữa HK I', s1end: 'Cuối HK I', s2mid: 'Giữa HK II', s2end: 'Cuối HK II', year: 'Cả năm' };
+export const WEEK_LABEL = { s1mid: 'Giữa học kì I', s1end: 'Cuối học kì I', s2mid: 'Giữa học kì II', s2end: 'Cuối học kì II', year: 'Cả năm' };
 export const SUMMARY_KEYS = Object.keys(WEEK_LABEL);
 
+export function monthRange(k, weeks) {
+  const total = Number(weeks) || (S.settings && S.settings.weeks) || 36;
+  const start = (Number(k) - 1) * 4 + 1;
+  const end = Math.min(Number(k) * 4, total);
+  return { start, end };
+}
+
+export function monthsCount(weeks) {
+  const total = Number(weeks) || (S.settings && S.settings.weeks) || 36;
+  return Math.ceil(total / 4);
+}
+
+export function isMonthKey(w) {
+  return typeof w === 'string' && /^m[1-9]\d*$/.test(w);
+}
+
 export function weekDisplay(w) {
-  if (typeof w === 'string' && WEEK_LABEL[w]) return WEEK_LABEL[w];
+  if (typeof w === 'string') {
+    if (WEEK_LABEL[w]) return WEEK_LABEL[w];
+    const m = /^m(\d+)$/.exec(w);
+    if (m) {
+      const k = Number(m[1]);
+      const { start, end } = monthRange(k);
+      return `Tháng ${k} (Tuần ${start}–${end})`;
+    }
+  }
   return 'Tuần ' + w;
 }
 
@@ -95,6 +119,8 @@ export async function loadBootstrap() {
     if (Number.isInteger(num) && num >= 0 && num <= (b.settings.weeks || 36)) {
       S.week = num;
     } else if (SUMMARY_KEYS.includes(saved)) {
+      S.week = saved;
+    } else if (/^m[1-9]\d*$/.test(saved) && Number(saved.slice(1)) <= Math.ceil((b.settings.weeks || 36) / 4)) {
       S.week = saved;
     }
   }

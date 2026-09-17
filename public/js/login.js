@@ -1,6 +1,6 @@
 import { api } from './core/http.js';
 import { S, loadBootstrap, positionsOfUser, setActivePosition, POS_LABEL } from './core/state.js';
-import { esc } from './core/ui.js';
+import { esc, showLoading, hideLoading } from './core/ui.js';
 
 function renderRoleChooser() {
   const list = positionsOfUser();
@@ -19,9 +19,16 @@ function renderRoleChooser() {
     </div></div>`;
   document.querySelectorAll('.role-cho').forEach(btn => {
     btn.onclick = async () => {
-      setActivePosition(btn.dataset.role);
-      const { enterApp } = await import('./app.js');
-      enterApp();
+      if (btn.disabled) return;
+      btn.disabled = true;
+      showLoading();
+      try {
+        setActivePosition(btn.dataset.role);
+        const { enterApp } = await import('./app.js');
+        await enterApp();
+      } finally {
+        hideLoading();
+      }
     };
   });
   document.getElementById('lg-home').onclick = e => {
@@ -50,17 +57,25 @@ export function renderLogin() {
   };
   const doLogin = async () => {
     const btn = document.getElementById('lg-btn');
+    if (btn.disabled) return;
+    const label = btn.innerHTML;
     btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Đang vào lớp...';
+    document.getElementById('lg-err').textContent = '';
+    showLoading();
     try {
       await api('/auth/login', { method: 'POST', body: { username: document.getElementById('lg-user').value, password: document.getElementById('lg-pass').value } });
       await loadBootstrap();
       if (renderRoleChooser()) return;
       const { enterApp } = await import('./app.js');
-      enterApp();
+      await enterApp();
     } catch (e) {
       document.getElementById('lg-err').textContent = e.message;
+      btn.disabled = false;
+      btn.innerHTML = label;
+    } finally {
+      hideLoading();
     }
-    btn.disabled = false;
   };
   document.getElementById('lg-btn').onclick = doLogin;
   ['lg-user', 'lg-pass'].forEach(id => {
